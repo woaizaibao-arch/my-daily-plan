@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId}
+    // Fields:
+    //   - points: number (required)
+    //   - diamonds: number (required)
+    //   - inventory: list (required)
+    //   - userRank: string (required)
+    //   - categories: list (optional)
+    //   - templates: list (optional)
+    //   - darkMode: bool (optional)
+    //   - selectedSoundUrl: string (optional)
+    //
+    // Collection: tasks
+    // Document ID: {taskId}
+    // Fields:
+    //   - id: string (required)
+    //   - text: string (required)
+    //   - duration: number (required)
+    //   - actualDuration: number (required)
+    //   - isCompleted: bool (required)
+    //   - category: string (required)
+    //   - date: string (required, YYYY-MM-DD)
+    //   - uid: string (required, owner's ID)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    }
+
+    function uidUnchanged() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == request.auth.uid;
+    }
+
+    function uidNotModified() {
+      return !('uid' in request.resource.data) || request.resource.data.uid == resource.data.uid;
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUserProfile(data) {
+      return hasRequiredFields(['points', 'diamonds', 'inventory', 'userRank']) &&
+             data.points is number &&
+             data.diamonds is number &&
+             data.inventory is list &&
+             data.userRank is string;
+    }
+
+    function isValidTask(data) {
+      return hasRequiredFields(['id', 'text', 'duration', 'actualDuration', 'isCompleted', 'category', 'date', 'uid']) &&
+             data.id is string &&
+             data.text is string && data.text.size() <= 200 &&
+             data.duration is number &&
+             data.actualDuration is number &&
+             data.isCompleted is bool &&
+             data.category is string &&
+             data.date is string && data.date.matches("^\\d{4}-\\d{2}-\\d{2}$") &&
+             data.uid is string;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserProfile(request.resource.data);
+      allow update: if isOwner(userId) && isValidUserProfile(request.resource.data);
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isAuthenticated() && resource.data.uid == request.auth.uid;
+      allow create: if isAuthenticated() && 
+                      request.resource.data.uid == request.auth.uid && 
+                      isValidTask(request.resource.data);
+      allow update: if isAuthenticated() && 
+                      resource.data.uid == request.auth.uid && 
+                      request.resource.data.uid == request.auth.uid && 
+                      isValidTask(request.resource.data);
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+  }
+}

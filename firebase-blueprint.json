@@ -1,0 +1,46 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user points, diamonds, inventory, and rank.",
+      "type": "object",
+      "properties": {
+        "points": { "type": "number", "description": "User's current points" },
+        "diamonds": { "type": "number", "description": "User's current diamonds" },
+        "inventory": { "type": "array", "items": { "type": "string" }, "description": "User's items" },
+        "userRank": { "type": "string", "description": "User's current rank" },
+        "categories": { "type": "array", "items": { "type": "string" }, "description": "User's custom categories" },
+        "templates": { "type": "array", "items": { "type": "object" }, "description": "User's task templates" },
+        "darkMode": { "type": "boolean", "description": "User's dark mode preference" },
+        "selectedSoundUrl": { "type": "string", "description": "User's selected notification sound" }
+      },
+      "required": ["points", "diamonds", "inventory", "userRank"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A daily task for the user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "duration": { "type": "number" },
+        "actualDuration": { "type": "number" },
+        "isCompleted": { "type": "boolean" },
+        "category": { "type": "string" },
+        "date": { "type": "string", "format": "date", "description": "YYYY-MM-DD" },
+        "uid": { "type": "string", "description": "Owner's user ID" }
+      },
+      "required": ["id", "text", "duration", "isCompleted", "category", "date", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User-specific settings and stats"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Individual tasks for all users"
+    }
+  }
+}

@@ -198,6 +198,7 @@ export default function App() {
   // Modals state
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [showAddTemplate, setShowAddTemplate] = useState<Category | null>(null);
+  const [quickAddTask, setQuickAddTask] = useState<ScheduledTask | null>(null);
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState('#3b82f6');
   const [newTplTitle, setNewTplTitle] = useState('');
@@ -319,7 +320,7 @@ export default function App() {
       isLocked: false,
       points: 0
     };
-    setTasks([...tasks, newTask]);
+    setQuickAddTask(newTask);
   };
 
   const updateTask = (id: string, updates: Partial<ScheduledTask>) => {
@@ -951,6 +952,102 @@ export default function App() {
                       className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
                     >
                       Add to Hub
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {quickAddTask && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] flex items-center justify-center p-4 md:p-8 bg-black/60 backdrop-blur-sm"
+            >
+              <div className="bg-white dark:bg-slate-800 p-6 md:p-8 rounded-[2rem] max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-700">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">Initialize Task</h3>
+                  <button onClick={() => setQuickAddTask(null)} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">{quickAddTask.category}</span>
+                      <button 
+                        onClick={() => setQuickAddTask({ ...quickAddTask, isLocked: !quickAddTask.isLocked })}
+                        className={cn("p-2 rounded-xl transition-all", quickAddTask.isLocked ? "bg-red-50 dark:bg-red-900/20 text-red-500" : "bg-white dark:bg-slate-800 text-slate-300 dark:text-slate-600")}
+                      >
+                        <Lock className="w-4 h-4" />
+                      </button>
+                    </div>
+                    
+                    <input 
+                      type="text"
+                      value={quickAddTask.title}
+                      onChange={(e) => setQuickAddTask({ ...quickAddTask, title: e.target.value })}
+                      placeholder="Task Title"
+                      className="w-full font-black text-slate-800 dark:text-white bg-transparent border-none p-0 focus:ring-0 text-lg"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Start Time</label>
+                      <input 
+                        type="time" 
+                        value={quickAddTask.startTime}
+                        onChange={(e) => setQuickAddTask({ ...quickAddTask, startTime: e.target.value })}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Duration (Min)</label>
+                      <input 
+                        type="number" 
+                        value={quickAddTask.duration}
+                        onChange={(e) => setQuickAddTask({ ...quickAddTask, duration: parseInt(e.target.value) || 0 })}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Adjust Duration</label>
+                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{quickAddTask.duration}m</span>
+                    </div>
+                    <input 
+                      type="range"
+                      min="5"
+                      max="180"
+                      step="5"
+                      value={quickAddTask.duration}
+                      onChange={(e) => setQuickAddTask({ ...quickAddTask, duration: parseInt(e.target.value) })}
+                      className="w-full h-1 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer accent-blue-600"
+                    />
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <button 
+                      onClick={() => setQuickAddTask(null)}
+                      className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setTasks([...tasks, quickAddTask]);
+                        setQuickAddTask(null);
+                        confetti({ origin: { y: 0.7 } });
+                      }}
+                      className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
+                    >
+                      Add to Timeline
                     </button>
                   </div>
                 </div>
