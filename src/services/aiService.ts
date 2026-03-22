@@ -23,24 +23,41 @@ export async function optimizeSchedule(tasks: ScheduledTask[], templates: TaskTe
   return [...completed, ...sortedRemaining];
 }
 
-export function calculateStats(tasks: ScheduledTask[]) {
-  const completedTasks = tasks.filter(t => t.isCompleted);
-  if (completedTasks.length === 0) return { avgDeviation: 0, stdDev: 0, efficiency: 0 };
-
-  const deviations = completedTasks.map(t => (t.actualDuration / 60) - t.duration);
-  const avgDeviation = deviations.reduce((a, b) => a + b, 0) / deviations.length;
+export function calculateWeeklyAverages(templates: TaskTemplate[]): { title: string; avgMinutes: number; color: string }[] {
+  const averages: { title: string; avgMinutes: number; color: string }[] = [];
+  const today = new Date();
   
-  const variance = deviations.reduce((a, b) => a + Math.pow(b - avgDeviation, 2), 0) / deviations.length;
-  const stdDev = Math.sqrt(variance);
+  // Map to store total duration and count for each template
+  const statsMap: Record<string, { totalSeconds: number; count: number; color: string }> = {};
 
-  const efficiency = completedTasks.reduce((acc, t) => {
-    const planned = t.duration * 60;
-    return acc + (planned / Math.max(planned, t.actualDuration));
-  }, 0) / completedTasks.length;
+  // Look back 7 days
+  for (let i = 0; i < 7; i++) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateStr = date.toISOString().split('T')[0];
+    const savedTasks = localStorage.getItem(`tasks-${dateStr}`);
+    
+    if (savedTasks) {
+      const dayTasks: ScheduledTask[] = JSON.parse(savedTasks);
+      dayTasks.forEach(task => {
+        if (task.isCompleted) {
+          if (!statsMap[task.title]) {
+            statsMap[task.title] = { totalSeconds: 0, count: 0, color: task.color };
+          }
+          statsMap[task.title].totalSeconds += task.actualDuration;
+          statsMap[task.title].count += 1;
+        }
+      });
+    }
+  }
 
-  return {
-    avgDeviation: Math.round(avgDeviation * 10) / 10,
-    stdDev: Math.round(stdDev * 10) / 10,
-    efficiency: Math.round(efficiency * 100)
-  };
+  Object.entries(statsMap).forEach(([title, data]) => {
+    averages.push({
+      title,
+      avgMinutes: Math.round(data.totalSeconds / (data.count || 1) / 60),
+      color: data.color
+    });
+  });
+
+  return averages.sort((a, b) => b.avgMinutes - a.avgMinutes);
 }

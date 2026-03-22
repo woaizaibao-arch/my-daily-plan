@@ -27,6 +27,41 @@ import {
 } from 'lucide-react';
 import { format, addDays, startOfToday, parse, addMinutes } from 'date-fns';
 import confetti from 'canvas-confetti';
+
+const fireworks = () => {
+  const duration = 3 * 1000;
+  const defaults = { startVelocity: 35, spread: 360, ticks: 60, zIndex: 1000 };
+  const bangUrl = 'https://assets.mixkit.co/active_storage/sfx/600/600-preview.mp3';
+  
+  const triggerBurst = (x: number) => {
+    try {
+      const audio = new Audio(bangUrl);
+      audio.volume = 0.4;
+      audio.play().catch(() => {});
+    } catch (e) {}
+
+    confetti({ 
+      ...defaults, 
+      particleCount: 60, 
+      origin: { x, y: Math.random() - 0.2 } 
+    });
+  };
+
+  // Initial burst
+  triggerBurst(0.5);
+
+  // Periodic bursts for 3 seconds
+  const interval = setInterval(() => {
+    const x = Math.random() > 0.5 ? (Math.random() * 0.2 + 0.1) : (Math.random() * 0.2 + 0.7);
+    triggerBurst(x);
+  }, 500);
+
+  // Absolute stop after 3 seconds
+  setTimeout(() => {
+    clearInterval(interval);
+  }, duration);
+};
+
 import { 
   XAxis, 
   YAxis, 
@@ -51,7 +86,7 @@ import { CSS } from '@dnd-kit/utilities';
 
 import { cn, formatDuration, getSecondsFromTime, getTimeFromSeconds } from './utils';
 import { Category, ScheduledTask, TaskTemplate, UserRank, ModuleType, RewardCard } from './types';
-import { optimizeSchedule, calculateStats } from './services/aiService';
+import { optimizeSchedule, calculateWeeklyAverages } from './services/aiService';
 
 const CATEGORIES: { name: Category; color: string }[] = [
   { name: 'SCHOOLWORK', color: '#3b82f6' },
@@ -98,7 +133,7 @@ const RANK_PROGRESSION: Record<UserRank, { next: UserRank | null; cost: number; 
 
 const NOTIFICATION_SOUNDS = [
   { id: 'zen', name: '禅意磬音', url: 'https://assets.mixkit.co/active_storage/sfx/402/402-preview.mp3' },
-  { id: 'crystal', name: '水晶清脆', url: 'https://assets.mixkit.co/active_storage/sfx/600/600-preview.mp3' },
+  { id: 'crystal', name: '水晶清脆', url: 'https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3' },
   { id: 'birds', name: '清晨鸟鸣', url: 'https://assets.mixkit.co/active_storage/sfx/136/136-preview.mp3' },
   { id: 'harp', name: '优雅竖琴', url: 'https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3' },
   { id: 'piano', name: '柔和钢琴', url: 'https://assets.mixkit.co/active_storage/sfx/2019/2019-preview.mp3' },
@@ -149,7 +184,7 @@ export default function App() {
     }
   }, [selectedSoundUrl]);
 
-  const playNotification = (duration: number = 10000, loop: boolean = true) => {
+  const playNotification = (duration: number = 3000, loop: boolean = false) => {
     const audio = audioRef.current;
     if (!audio) return;
 
@@ -200,6 +235,9 @@ export default function App() {
   const [showAddTemplate, setShowAddTemplate] = useState<Category | null>(null);
   const [quickAddTask, setQuickAddTask] = useState<ScheduledTask | null>(null);
   const [newCatName, setNewCatName] = useState('');
+  
+  // Calculate weekly averages
+  const weeklyAverages = useMemo(() => calculateWeeklyAverages(templates), [tasks, templates]);
   const [newCatColor, setNewCatColor] = useState('#3b82f6');
   const [newTplTitle, setNewTplTitle] = useState('');
   const [newTplDuration, setNewTplDuration] = useState(60);
@@ -208,9 +246,6 @@ export default function App() {
     const saved = localStorage.getItem('user-dark-mode');
     return saved === 'true';
   });
-
-  // Calculate stats
-  const stats = useMemo(() => calculateStats(tasks), [tasks]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -279,7 +314,7 @@ export default function App() {
 
               // Trigger sound if we just crossed the planned duration
               if (task.actualDuration < plannedSeconds && newActualDuration >= plannedSeconds) {
-                playNotification();
+                playNotification(3000, false);
               }
 
               return {
@@ -328,6 +363,11 @@ export default function App() {
   };
 
   const toggleTaskComplete = (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (task && !task.isCompleted) {
+      fireworks();
+    }
+
     setTasks(prev => {
       const taskIndex = prev.findIndex(t => t.id === id);
       if (taskIndex === -1) return prev;
@@ -376,23 +416,25 @@ export default function App() {
         setPoints(p => p + (isOnTime ? 10 : 5));
         setShowReward(true);
         setTimeout(() => setShowReward(false), 2000);
+
+        // Check if this was the last task to complete
+        const wasAllDone = prev.length > 0 && prev.every(t => t.isCompleted);
+        const isNowAllDone = newTasks.length > 0 && newTasks.every(t => t.isCompleted);
+        if (isNowAllDone && !wasAllDone) {
+          setDiamonds(d => d + 5);
+          fireworks();
+        }
       }
 
       return newTasks;
     });
-    
-    const allDone = tasks.length > 0 && tasks.every(t => t.isCompleted);
-    if (allDone) {
-      setDiamonds(d => d + 5);
-      confetti({ colors: ['#3b82f6', '#10b981', '#ffffff'] });
-    }
   };
 
   const buyCard = (card: RewardCard) => {
     if (diamonds >= card.cost) {
       setDiamonds(d => d - card.cost);
       setInventory(prev => [...prev, card.id]);
-      confetti();
+      fireworks();
     }
   };
 
@@ -415,7 +457,7 @@ export default function App() {
     if (stage.next && points >= stage.cost) {
       setPoints(p => p - stage.cost);
       setUserRank(stage.next);
-      confetti();
+      fireworks();
     }
   };
 
@@ -476,13 +518,6 @@ export default function App() {
       });
     }
   };
-
-  const statsData = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => ({
-      name: format(addDays(selectedDate, i - 3), 'MMM dd'),
-      value: Math.floor(Math.random() * 100)
-    }));
-  }, [selectedDate]);
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
@@ -560,15 +595,24 @@ export default function App() {
                           </button>
                         ))}
                       </div>
-                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
                         <button 
                           onClick={() => {
-                            playNotification();
+                            playNotification(3000, false);
                             setShowSoundSettings(false);
                           }}
                           className="w-full py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
                         >
                           测试 10 秒铃声
+                        </button>
+                        <button 
+                          onClick={() => {
+                            fireworks();
+                            setShowSoundSettings(false);
+                          }}
+                          className="w-full py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                        >
+                          测试烟花音效
                         </button>
                       </div>
                     </motion.div>
@@ -728,29 +772,36 @@ export default function App() {
 
           {/* Fixed Constraints & Rewards */}
           <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
-            {/* Stats Panel */}
+            {/* Weekly Averages Panel */}
             <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
               <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" /> Performance
+                <BarChart3 className="w-4 h-4" /> Weekly Avg Time
               </h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Avg Deviation</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{stats.avgDeviation} <span className="text-xs text-slate-400">min</span></p>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Standard Dev (σ)</p>
-                  <p className="text-xl font-black text-slate-900 dark:text-white">{stats.stdDev} <span className="text-xs text-slate-400">min</span></p>
-                </div>
-                <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
-                  <p className="text-[10px] font-black text-slate-400 uppercase mb-1">Efficiency</p>
-                  <div className="flex items-center gap-3">
-                    <p className="text-xl font-black text-slate-900 dark:text-white">{stats.efficiency}%</p>
-                    <div className="flex-1 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                      <div className="h-full bg-blue-500" style={{ width: `${stats.efficiency}%` }} />
+              <div className="space-y-4">
+                {weeklyAverages.length === 0 ? (
+                  <p className="text-xs text-slate-400 font-medium text-center py-4">No data yet</p>
+                ) : (
+                  weeklyAverages.map(avg => (
+                    <div key={avg.title} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: avg.color }} />
+                          <p className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase truncate max-w-[120px]">{avg.title}</p>
+                        </div>
+                        <p className="text-sm font-black text-slate-900 dark:text-white">{avg.avgMinutes} <span className="text-[10px] text-slate-400">min</span></p>
+                      </div>
+                      <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full transition-all duration-1000" 
+                          style={{ 
+                            backgroundColor: avg.color,
+                            width: `${Math.min(100, (avg.avgMinutes / 120) * 100)}%` 
+                          }} 
+                        />
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
             </section>
 
@@ -1043,7 +1094,6 @@ export default function App() {
                       onClick={() => {
                         setTasks([...tasks, quickAddTask]);
                         setQuickAddTask(null);
-                        confetti({ origin: { y: 0.7 } });
                       }}
                       className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
                     >
@@ -1230,27 +1280,27 @@ function SortableTaskItem({
       ref={setNodeRef} 
       style={style}
       className={cn(
-        "flex flex-col md:flex-row items-start gap-4 group relative md:pl-28",
+        "flex flex-row items-start gap-3 md:gap-4 group relative md:pl-28",
         task.isCompleted ? "opacity-40 grayscale" : "opacity-100",
         isDragging && "z-50"
       )}
     >
-      <div className="md:absolute md:left-0 md:top-1 md:text-right w-full md:min-w-[100px] flex md:flex-col items-center md:items-end justify-between md:justify-start gap-2 mb-2 md:mb-0">
-        <div className="relative group/time">
+      <div className="md:absolute md:left-0 md:top-1 md:text-right w-16 md:w-24 flex flex-col items-center md:items-end justify-start gap-2 shrink-0">
+        <div className="relative group/time w-full">
           <input 
             type="time" 
             value={task.startTime}
             onChange={(e) => onUpdateTask(task.id, { startTime: e.target.value })}
-            className="text-[11px] font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-3 py-1.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:border-blue-300 transition-all w-24 md:w-full md:max-w-[100px]"
+            className="text-[10px] md:text-[11px] font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-1 md:px-3 py-1.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:border-blue-300 transition-all w-full text-center md:text-right"
           />
         </div>
-        <div className="flex items-center gap-1">
-          <div className="relative flex items-center bg-slate-50 dark:bg-slate-900 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700 shadow-inner">
+        <div className="flex items-center gap-1 w-full">
+          <div className="relative flex items-center bg-slate-50 dark:bg-slate-900 px-1 md:px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700 shadow-inner w-full justify-center md:justify-end">
             <input 
               type="number" 
               value={task.duration}
               onChange={(e) => onUpdateTask(task.id, { duration: parseInt(e.target.value) || 0 })}
-              className="text-[9px] font-black text-slate-600 dark:text-slate-400 bg-transparent border-none p-0 w-8 md:w-10 text-right focus:ring-0 cursor-pointer"
+              className="text-[9px] font-black text-slate-600 dark:text-slate-400 bg-transparent border-none p-0 w-6 md:w-10 text-center md:text-right focus:ring-0 cursor-pointer"
             />
             <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 ml-0.5">m</span>
           </div>
