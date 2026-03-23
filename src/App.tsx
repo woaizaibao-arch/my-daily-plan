@@ -141,6 +141,7 @@ const NOTIFICATION_SOUNDS = [
 
 export default function App() {
   const [selectedDate, setSelectedDate] = useState(startOfToday());
+  const [pendingShift, setPendingShift] = useState<{ delaySeconds: number; taskIndex: number; taskTitle: string } | null>(null);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
   const [categories, setCategories] = useState<{ name: Category; color: string }[]>(() => {
     const saved = localStorage.getItem('user-categories');
@@ -364,20 +365,19 @@ export default function App() {
 
   const toggleTaskComplete = (id: string) => {
     const task = tasks.find(t => t.id === id);
-    if (task && !task.isCompleted) {
+    if (!task) return;
+
+    const isNowCompleted = !task.isCompleted;
+    const plannedSeconds = task.duration * 60;
+    const delaySeconds = task.actualDuration - plannedSeconds;
+    const taskIndex = tasks.findIndex(t => t.id === id);
+
+    if (isNowCompleted) {
       fireworks();
     }
 
     setTasks(prev => {
-      const taskIndex = prev.findIndex(t => t.id === id);
-      if (taskIndex === -1) return prev;
-      const task = prev[taskIndex];
-
-      const isNowCompleted = !task.isCompleted;
-      const plannedSeconds = task.duration * 60;
-      const delaySeconds = task.actualDuration - plannedSeconds;
       const isOnTime = task.actualDuration <= plannedSeconds;
-
       let newTasks = prev.map(t => {
         if (t.id === id) {
           return { 
@@ -390,34 +390,12 @@ export default function App() {
         return t;
       });
 
-      // Global Shift Logic
-      if (isNowCompleted && delaySeconds > 0) {
-        let conflictDetected = false;
-        newTasks = newTasks.map((t, idx) => {
-          if (idx > taskIndex && !t.isCompleted) {
-            const currentStartSeconds = getSecondsFromTime(t.startTime);
-            const newStartSeconds = currentStartSeconds + delaySeconds;
-            const newStartTime = getTimeFromSeconds(newStartSeconds);
-            
-            if (t.isLocked) conflictDetected = true;
-            
-            return { ...t, startTime: newStartTime };
-          }
-          return t;
-        });
-
-        if (conflictDetected) {
-          setAlertMessage("Current delay will affect subsequent fixed schedules. Please review your timeline.");
-        }
-      }
-
       if (isNowCompleted) {
         setDiamonds(d => d + 1);
         setPoints(p => p + (isOnTime ? 10 : 5));
         setShowReward(true);
         setTimeout(() => setShowReward(false), 2000);
 
-        // Check if this was the last task to complete
         const wasAllDone = prev.length > 0 && prev.every(t => t.isCompleted);
         const isNowAllDone = newTasks.length > 0 && newTasks.every(t => t.isCompleted);
         if (isNowAllDone && !wasAllDone) {
@@ -428,6 +406,42 @@ export default function App() {
 
       return newTasks;
     });
+
+    // Global Shift Logic - Now asks for permission if delay >= 5 mins (300s)
+    if (isNowCompleted && Math.abs(delaySeconds) >= 300) {
+      setPendingShift({
+        delaySeconds,
+        taskIndex,
+        taskTitle: task.title
+      });
+    }
+  };
+
+  const applyShift = () => {
+    if (!pendingShift) return;
+    const { delaySeconds, taskIndex } = pendingShift;
+
+    setTasks(prev => {
+      let conflictDetected = false;
+      const newTasks = prev.map((t, idx) => {
+        if (idx > taskIndex && !t.isCompleted) {
+          const currentStartSeconds = getSecondsFromTime(t.startTime);
+          const newStartSeconds = currentStartSeconds + delaySeconds;
+          const newStartTime = getTimeFromSeconds(newStartSeconds);
+          
+          if (t.isLocked) conflictDetected = true;
+          
+          return { ...t, startTime: newStartTime };
+        }
+        return t;
+      });
+
+      if (conflictDetected) {
+        setAlertMessage("Current delay will affect subsequent fixed schedules. Please review your timeline.");
+      }
+      return newTasks;
+    });
+    setPendingShift(null);
   };
 
   const buyCard = (card: RewardCard) => {
@@ -1118,6 +1132,40 @@ export default function App() {
               <div>
                 <p className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest">Crystal Acquired</p>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Task synchronization complete.</p>
+              </div>
+            </motion.div>
+          )}
+
+          {pendingShift && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm"
+            >
+              <div className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] max-w-md w-full shadow-2xl tactile-tile border border-slate-100 dark:border-slate-700">
+                <div className="w-16 h-16 bg-blue-100 dark:bg-blue-900/20 rounded-2xl flex items-center justify-center text-blue-600 mb-6 mx-auto">
+                  <Clock className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-black text-center text-slate-800 dark:text-white mb-4 uppercase tracking-tighter">时间调整建议</h3>
+                <p className="text-slate-500 dark:text-slate-400 text-center text-sm leading-relaxed mb-8">
+                  计划「{pendingShift.taskTitle}」{pendingShift.delaySeconds > 0 ? '推迟' : '提前'}了 {Math.abs(Math.round(pendingShift.delaySeconds / 60))} 分钟完成。
+                  是否自动平移后续的所有计划？
+                </p>
+                <div className="flex gap-4">
+                  <button 
+                    onClick={() => setPendingShift(null)}
+                    className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest"
+                  >
+                    保持现状
+                  </button>
+                  <button 
+                    onClick={applyShift}
+                    className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
+                  >
+                    自动平移
+                  </button>
+                </div>
               </div>
             </motion.div>
           )}
