@@ -19,8 +19,6 @@ import {
   Check,
   Gem,
   Award,
-  Sun,
-  Moon,
   Volume2,
   BarChart3,
   X,
@@ -154,7 +152,9 @@ export default function App() {
   });
   const [templates, setTemplates] = useState<TaskTemplate[]>(() => {
     const saved = localStorage.getItem('user-templates');
-    return saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
+    const list = saved ? JSON.parse(saved) : INITIAL_TEMPLATES;
+    // Force remove 'Piano Practice' if it was previously saved in localStorage
+    return list.filter((t: TaskTemplate) => t.id !== 't2' && t.title !== 'Piano Practice');
   });
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [points, setPoints] = useState(0);
@@ -656,7 +656,7 @@ export default function App() {
                       initial={{ opacity: 0, y: 10, scale: 0.95 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute right-0 mt-3 w-48 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xl z-[200] p-2"
+                      className="absolute left-0 md:right-0 mt-3 w-48 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xl z-[200] p-2"
                     >
                       <div className="space-y-1">
                         {NOTIFICATION_SOUNDS.map(sound => (
@@ -703,13 +703,6 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
-
-              <button 
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-3 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 tactile-tile text-slate-500 dark:text-slate-400"
-              >
-                {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-              </button>
 
               <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-2xl p-1 border border-slate-100 dark:border-slate-700 shadow-sm tactile-tile">
                 <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
