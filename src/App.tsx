@@ -106,7 +106,6 @@ const INITIAL_TEMPLATES: TaskTemplate[] = [
   { id: 't1-3', title: 'Asia Study', category: 'SCHOOLWORK', defaultDuration: 30, color: '#3b82f6', moduleType: 'TASK' },
   { id: 't1-4', title: 'Music Exploration', category: 'SCHOOLWORK', defaultDuration: 45, color: '#3b82f6', moduleType: 'TASK' },
   { id: 't1-5', title: 'French', category: 'SCHOOLWORK', defaultDuration: 45, color: '#3b82f6', moduleType: 'TASK' },
-  { id: 't2', title: 'Piano Practice', category: 'INSTRUMENTS', defaultDuration: 45, color: '#8b5cf6', moduleType: 'TASK' },
   { id: 't2-1', title: 'Guitar Session', category: 'INSTRUMENTS', defaultDuration: 30, color: '#8b5cf6', moduleType: 'TASK' },
   { id: 't2-2', title: 'Violin Drill', category: 'INSTRUMENTS', defaultDuration: 60, color: '#8b5cf6', moduleType: 'TASK' },
   { id: 't3', title: 'SAT Reading', category: 'SAT', defaultDuration: 60, color: '#10b981', moduleType: 'TASK' },
@@ -790,15 +789,12 @@ export default function App() {
 
                                 {catTemplates.length > 0 ? (
                                   catTemplates.map(t => (
-                                    <div key={t.id} className="relative group/tpl">
-                                      <DraggableTemplate template={t} onAdd={() => addTaskFromTemplate(t)} />
-                                      <button 
-                                        onClick={() => deleteTemplate(t.id)}
-                                        className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tpl:opacity-100 transition-opacity shadow-lg z-10"
-                                      >
-                                        <X className="w-3 h-3" />
-                                      </button>
-                                    </div>
+                                    <DraggableTemplate 
+                                      key={t.id} 
+                                      template={t} 
+                                      onAdd={() => addTaskFromTemplate(t)} 
+                                      onDelete={() => deleteTemplate(t.id)}
+                                    />
                                   ))
                                 ) : (
                                   <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-2">No modules available</p>
@@ -1345,7 +1341,7 @@ export default function App() {
   );
 }
 
-function DraggableTemplate({ template, onAdd }: { template: TaskTemplate, onAdd: () => void }) {
+function DraggableTemplate({ template, onAdd, onDelete }: { template: TaskTemplate, onAdd: () => void, onDelete: () => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `template-${template.id}`,
     data: { type: 'template', template },
@@ -1364,18 +1360,29 @@ function DraggableTemplate({ template, onAdd }: { template: TaskTemplate, onAdd:
         isDragging && "opacity-50 scale-95 z-50"
       )}
     >
-      <div>
-        <h3 className="font-black text-slate-700 dark:text-slate-200 text-xs">{template.title}</h3>
+      <div className="flex-1 min-w-0">
+        <h3 className="font-black text-slate-700 dark:text-slate-200 text-xs truncate">{template.title}</h3>
       </div>
-      <button 
-        onClick={(e) => { 
-          e.stopPropagation(); 
-          onAdd(); 
-        }}
-        className="w-8 h-8 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all z-20 active:scale-90"
-      >
-        <Plus className="w-4 h-4" />
-      </button>
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            onDelete(); 
+          }}
+          className="w-8 h-8 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-xl flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/40 transition-all z-20 active:scale-90"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={(e) => { 
+            e.stopPropagation(); 
+            onAdd(); 
+          }}
+          className="w-8 h-8 bg-slate-50 dark:bg-slate-900 rounded-xl flex items-center justify-center text-slate-400 hover:bg-blue-600 hover:text-white transition-all z-20 active:scale-90"
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }
