@@ -45,3 +45,12 @@ export interface RewardCard {
 }
 
 export type UserRank = 'Beginner' | 'Consistent' | 'Productive' | 'Master' | 'Elite';
+
+export type ViewMode = 'STUDENT' | 'PARENT';
+
+export interface ParentTask {
+  id: string;
+  time: string; // "HH:mm"
+  title: string;
+  isCompleted: boolean;
+}

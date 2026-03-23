@@ -23,7 +23,9 @@ import {
   Moon,
   Volume2,
   BarChart3,
-  X
+  X,
+  User,
+  Baby
 } from 'lucide-react';
 import { format, addDays, startOfToday, parse, addMinutes } from 'date-fns';
 import confetti from 'canvas-confetti';
@@ -85,7 +87,7 @@ import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 
 import { cn, formatDuration, getSecondsFromTime, getTimeFromSeconds } from './utils';
-import { Category, ScheduledTask, TaskTemplate, UserRank, ModuleType, RewardCard } from './types';
+import { Category, ScheduledTask, TaskTemplate, UserRank, ModuleType, RewardCard, ViewMode, ParentTask } from './types';
 import { optimizeSchedule, calculateWeeklyAverages } from './services/aiService';
 
 const CATEGORIES: { name: Category; color: string }[] = [
@@ -140,9 +142,13 @@ const NOTIFICATION_SOUNDS = [
 ];
 
 export default function App() {
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('user-view-mode') as ViewMode) || 'STUDENT';
+  });
   const [selectedDate, setSelectedDate] = useState(startOfToday());
   const [pendingShift, setPendingShift] = useState<{ delaySeconds: number; taskIndex: number; taskTitle: string } | null>(null);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
+  const [parentTasks, setParentTasks] = useState<ParentTask[]>([]);
   const [categories, setCategories] = useState<{ name: Category; color: string }[]>(() => {
     const saved = localStorage.getItem('user-categories');
     return saved ? JSON.parse(saved) : CATEGORIES;
@@ -256,6 +262,29 @@ export default function App() {
   const [newTplTitle, setNewTplTitle] = useState('');
   const [newTplDuration, setNewTplDuration] = useState(60);
 
+  const [parentTaskTitle, setParentTaskTitle] = useState('');
+  const [parentTaskTime, setParentTaskTime] = useState('08:00');
+
+  const addParentTask = () => {
+    if (!parentTaskTitle.trim()) return;
+    const newTask: ParentTask = {
+      id: Math.random().toString(36).substr(2, 9),
+      title: parentTaskTitle,
+      time: parentTaskTime,
+      isCompleted: false
+    };
+    setParentTasks([...parentTasks, newTask].sort((a, b) => a.time.localeCompare(b.time)));
+    setParentTaskTitle('');
+  };
+
+  const toggleParentTask = (id: string) => {
+    setParentTasks(parentTasks.map(t => t.id === id ? { ...t, isCompleted: !t.isCompleted } : t));
+  };
+
+  const deleteParentTask = (id: string) => {
+    setParentTasks(parentTasks.filter(t => t.id !== id));
+  };
+
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('user-dark-mode');
     return saved === 'true';
@@ -275,6 +304,10 @@ export default function App() {
     const savedTasks = localStorage.getItem(`tasks-${dateStr}`);
     if (savedTasks) setTasks(JSON.parse(savedTasks));
     else setTasks([]);
+
+    const savedParentTasks = localStorage.getItem(`parent-tasks-${dateStr}`);
+    if (savedParentTasks) setParentTasks(JSON.parse(savedParentTasks));
+    else setParentTasks([]);
     
     const savedPoints = localStorage.getItem('user-points');
     if (savedPoints) setPoints(parseInt(savedPoints));
@@ -293,6 +326,8 @@ export default function App() {
   useEffect(() => {
     const dateStr = format(selectedDate, 'yyyy-MM-dd');
     localStorage.setItem(`tasks-${dateStr}`, JSON.stringify(tasks));
+    localStorage.setItem(`parent-tasks-${dateStr}`, JSON.stringify(parentTasks));
+    localStorage.setItem('user-view-mode', viewMode);
     localStorage.setItem('user-points', points.toString());
     localStorage.setItem('user-diamonds', diamonds.toString());
     localStorage.setItem('user-inventory', JSON.stringify(inventory));
@@ -550,8 +585,8 @@ export default function App() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="min-h-screen bg-[#f8fafc] text-slate-900 font-sans selection:bg-blue-100">
         
-        {/* The Vault: Top Panel */}
-        <header className="glass sticky top-0 z-[100] px-4 md:px-8 py-4 mb-4 md:mb-8">
+        {/* Header */}
+        <header className="glass sticky top-0 z-[100] px-4 md:px-8 py-4 mb-4 md:mb-8 border-b border-white/20 dark:border-white/10">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 md:gap-0">
             <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
               <div className="flex items-center gap-3">
@@ -559,8 +594,31 @@ export default function App() {
                   <Zap className="text-white w-6 h-6 fill-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg md:text-xl font-black tracking-tighter text-slate-900 dark:text-white">DAILY PLAN</h1>
+                  <h1 className="text-lg md:text-xl font-black tracking-tighter text-slate-900 dark:text-white">
+                    {viewMode === 'STUDENT' ? 'STUDENT PLAN' : 'PARENT PLAN'}
+                  </h1>
                 </div>
+              </div>
+
+              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+                <button 
+                  onClick={() => setViewMode('STUDENT')}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    viewMode === 'STUDENT' ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  <Baby className="w-3 h-3" /> Student
+                </button>
+                <button 
+                  onClick={() => setViewMode('PARENT')}
+                  className={cn(
+                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
+                    viewMode === 'PARENT' ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                  )}
+                >
+                  <User className="w-3 h-3" /> Parent
+                </button>
               </div>
               
               <div className="hidden md:block h-8 w-px bg-slate-200 dark:bg-slate-700" />
@@ -665,217 +723,311 @@ export default function App() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 md:px-8 pb-20 grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
-          
-          {/* The Hub: Module Warehouse */}
-          <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
-            <section>
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                  <LayoutGrid className="w-4 h-4" /> The Hub
-                </h2>
-                <button 
-                  onClick={() => setShowAddCategory(true)}
-                  className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
-                >
-                  <Plus className="w-3 h-3" />
-                </button>
-              </div>
-              
-              <div className="space-y-3">
-                {categories.map(cat => {
-                  const catTemplates = templates.filter(t => t.category === cat.name);
-                  const isExpanded = expandedCategory === cat.name;
+        <main className="max-w-7xl mx-auto px-4 md:px-8 pb-20">
+          {viewMode === 'STUDENT' ? (
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6 md:gap-10">
+              {/* The Hub: Module Warehouse */}
+              <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
+                <section>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <LayoutGrid className="w-4 h-4" /> The Hub
+                    </h2>
+                    <button 
+                      onClick={() => setShowAddCategory(true)}
+                      className="p-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-lg shadow-blue-500/20"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
                   
-                  return (
-                    <div key={cat.name} className="space-y-2">
-                      <div className="flex gap-2">
+                  <div className="space-y-3">
+                    {categories.map(cat => {
+                      const catTemplates = templates.filter(t => t.category === cat.name);
+                      const isExpanded = expandedCategory === cat.name;
+                      
+                      return (
+                        <div key={cat.name} className="space-y-2">
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => setExpandedCategory(isExpanded ? null : cat.name)}
+                              className={cn(
+                                "flex-1 flex items-center justify-between p-4 rounded-2xl border transition-all tactile-tile",
+                                isExpanded 
+                                  ? "bg-slate-900 dark:bg-slate-700 text-white border-transparent shadow-lg" 
+                                  : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-200"
+                              )}
+                            >
+                              <div className="flex items-center gap-3">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
+                                <span className="text-xs font-black uppercase tracking-widest">{cat.name}</span>
+                              </div>
+                              {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 opacity-40" />}
+                            </button>
+                            <button 
+                              onClick={() => deleteCategory(cat.name)}
+                              className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          <AnimatePresence>
+                            {isExpanded && (
+                              <motion.div 
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                className="overflow-hidden space-y-2 pl-4"
+                              >
+                                <button 
+                                  onClick={() => setShowAddTemplate(cat.name)}
+                                  className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span className="text-[10px] font-black uppercase tracking-widest">Add Module</span>
+                                </button>
+
+                                {catTemplates.length > 0 ? (
+                                  catTemplates.map(t => (
+                                    <div key={t.id} className="relative group/tpl">
+                                      <DraggableTemplate template={t} onAdd={() => addTaskFromTemplate(t)} />
+                                      <button 
+                                        onClick={() => deleteTemplate(t.id)}
+                                        className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tpl:opacity-100 transition-opacity shadow-lg z-10"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-2">No modules available</p>
+                                )}
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
+
+                <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
+                  <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-4">The Vault</h3>
+                  <div className="flex flex-col items-center text-center">
+                    <div className="text-5xl mb-3 drop-shadow-lg">{RANK_PROGRESSION[userRank].label.split(' ')[0]}</div>
+                    <p className="text-xl font-black text-slate-800 dark:text-white">{RANK_PROGRESSION[userRank].label.split(' ')[1]}</p>
+                    <div className="w-full bg-slate-100 dark:bg-slate-900 h-1.5 rounded-full mt-4 overflow-hidden">
+                      <div 
+                        className="bg-blue-600 h-full transition-all duration-1000" 
+                        style={{ width: `${Math.min(100, (points / RANK_PROGRESSION[userRank].cost) * 100)}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2">{points} / {RANK_PROGRESSION[userRank].cost} XP to Level Up</p>
+                    
+                    {RANK_PROGRESSION[userRank].next && (
+                      <button 
+                        onClick={promoteRank}
+                        disabled={points < RANK_PROGRESSION[userRank].cost}
+                        className="w-full mt-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black dark:hover:bg-slate-100 disabled:opacity-20 transition-all active:scale-95"
+                      >
+                        Evolve System
+                      </button>
+                    )}
+                  </div>
+                </section>
+              </aside>
+
+              {/* Active Timeline */}
+              <div className="col-span-1 md:col-span-6">
+                <TimelineDropZone 
+                  tasks={tasks} 
+                  isOptimizing={isOptimizing} 
+                  onOptimize={async () => {
+                    setIsOptimizing(true);
+                    const opt = await optimizeSchedule(tasks, templates);
+                    setTasks(opt);
+                    setIsOptimizing(false);
+                  }}
+                  toggleTimer={toggleTimer}
+                  toggleTaskComplete={toggleTaskComplete}
+                  onDelete={(id) => setTasks(tasks.filter(t => t.id !== id))}
+                  onUpdateTask={updateTask}
+                />
+              </div>
+
+              {/* Rewards */}
+              <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
+                {/* Weekly Averages Panel */}
+                <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
+                  <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <BarChart3 className="w-4 h-4" /> Weekly Avg Time
+                  </h3>
+                  <div className="space-y-4">
+                    {weeklyAverages.length === 0 ? (
+                      <p className="text-xs text-slate-400 font-medium text-center py-4">No data yet</p>
+                    ) : (
+                      weeklyAverages.map(avg => (
+                        <div key={avg.title} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: avg.color }} />
+                              <p className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase truncate max-w-[120px]">{avg.title}</p>
+                            </div>
+                            <p className="text-sm font-black text-slate-900 dark:text-white">{avg.avgMinutes} <span className="text-[10px] text-slate-400">min</span></p>
+                          </div>
+                          <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full transition-all duration-1000" 
+                              style={{ 
+                                backgroundColor: avg.color,
+                                width: `${Math.min(100, (avg.avgMinutes / 120) * 100)}%` 
+                              }} 
+                            />
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </section>
+
+                <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
+                  <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4" /> Reward Store
+                  </h3>
+                  <div className="space-y-4">
+                    {REWARD_CARDS.map(card => (
+                      <button 
+                        key={card.id}
+                        onClick={() => buyCard(card)}
+                        disabled={diamonds < card.cost}
+                        className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/50 transition-all group disabled:opacity-50"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{card.icon}</span>
+                          <div className="text-left">
+                            <p className="text-xs font-black text-slate-700 dark:text-slate-200">{card.title}</p>
+                            <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{card.description}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
+                          <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{card.cost}</span>
+                          <Gem className="w-3 h-3 text-blue-500 fill-blue-500/20 diamond-3d" />
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </section>
+
+                {inventory.length > 0 && (
+                  <section className="p-6 bg-slate-900 dark:bg-slate-950 rounded-3xl shadow-2xl border border-white/5">
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Inventory</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {inventory.map((id, idx) => {
+                        const card = REWARD_CARDS.find(c => c.id === id);
+                        return (
+                          <div key={idx} className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl hover:bg-white/20 transition-colors cursor-help" title={card?.title}>
+                            {card?.icon}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+              </aside>
+            </div>
+          ) : (
+            <div className="max-w-2xl mx-auto space-y-8">
+              {/* Parent View: Simple & Concise */}
+              <section className="p-8 bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 tactile-tile">
+                <div className="mb-8">
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white">Parent Planner</h2>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Simple Daily Schedule</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Task Title</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Family Dinner"
+                        value={parentTaskTitle}
+                        onChange={(e) => setParentTaskTitle(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl px-6 py-4 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                    <div className="w-32">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Time</label>
+                      <input 
+                        type="time"
+                        value={parentTaskTime}
+                        onChange={(e) => setParentTaskTime(e.target.value)}
+                        className="w-full bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-2xl px-4 py-4 text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <button 
+                    onClick={addParentTask}
+                    className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all active:scale-[0.98]"
+                  >
+                    Add to Schedule
+                  </button>
+                </div>
+              </section>
+
+              <div className="space-y-4">
+                {parentTasks.length === 0 ? (
+                  <div className="py-20 text-center bg-slate-50/50 dark:bg-slate-900/20 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
+                    <Clock className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
+                    <p className="text-slate-400 dark:text-slate-600 text-xs font-black uppercase tracking-widest">No plans for today</p>
+                  </div>
+                ) : (
+                  parentTasks.map(task => (
+                    <motion.div 
+                      layout
+                      key={task.id}
+                      className={cn(
+                        "flex items-center justify-between p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile group",
+                        task.isCompleted && "opacity-60"
+                      )}
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="w-16 text-center">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                          <p className="text-sm font-black text-slate-800 dark:text-white">{task.time}</p>
+                        </div>
+                        <div className="h-8 w-[1px] bg-slate-100 dark:bg-slate-700" />
+                        <div>
+                          <h3 className={cn(
+                            "text-sm font-black text-slate-700 dark:text-slate-200",
+                            task.isCompleted && "line-through"
+                          )}>{task.title}</h3>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
                         <button 
-                          onClick={() => setExpandedCategory(isExpanded ? null : cat.name)}
+                          onClick={() => toggleParentTask(task.id)}
                           className={cn(
-                            "flex-1 flex items-center justify-between p-4 rounded-2xl border transition-all tactile-tile",
-                            isExpanded 
-                              ? "bg-slate-900 dark:bg-slate-700 text-white border-transparent shadow-lg" 
-                              : "bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-blue-200"
+                            "w-10 h-10 rounded-2xl flex items-center justify-center transition-all",
+                            task.isCompleted ? "bg-green-500 text-white" : "bg-slate-50 dark:bg-slate-900 text-slate-300 hover:text-green-500"
                           )}
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: cat.color }} />
-                            <span className="text-xs font-black uppercase tracking-widest">{cat.name}</span>
-                          </div>
-                          {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4 opacity-40" />}
+                          <Check className="w-5 h-5" />
                         </button>
                         <button 
-                          onClick={() => deleteCategory(cat.name)}
-                          className="p-4 bg-red-50 dark:bg-red-900/20 text-red-500 rounded-2xl border border-red-100 dark:border-red-900/30 hover:bg-red-100 transition-colors"
+                          onClick={() => deleteParentTask(task.id)}
+                          className="w-10 h-10 bg-slate-50 dark:bg-slate-900 rounded-2xl flex items-center justify-center text-slate-300 hover:text-red-500 transition-all"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
-                      
-                      <AnimatePresence>
-                        {isExpanded && (
-                          <motion.div 
-                            initial={{ height: 0, opacity: 0 }}
-                            animate={{ height: 'auto', opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
-                            className="overflow-hidden space-y-2 pl-4"
-                          >
-                            <button 
-                              onClick={() => setShowAddTemplate(cat.name)}
-                              className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all"
-                            >
-                              <Plus className="w-3 h-3" />
-                              <span className="text-[10px] font-black uppercase tracking-widest">Add Module</span>
-                            </button>
-
-                            {catTemplates.length > 0 ? (
-                              catTemplates.map(t => (
-                                <div key={t.id} className="relative group/tpl">
-                                  <DraggableTemplate template={t} onAdd={() => addTaskFromTemplate(t)} />
-                                  <button 
-                                    onClick={() => deleteTemplate(t.id)}
-                                    className="absolute -right-2 -top-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/tpl:opacity-100 transition-opacity shadow-lg z-10"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))
-                            ) : (
-                              <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-2">No modules available</p>
-                            )}
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
-              <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-4">The Vault</h3>
-              <div className="flex flex-col items-center text-center">
-                <div className="text-5xl mb-3 drop-shadow-lg">{RANK_PROGRESSION[userRank].label.split(' ')[0]}</div>
-                <p className="text-xl font-black text-slate-800 dark:text-white">{RANK_PROGRESSION[userRank].label.split(' ')[1]}</p>
-                <div className="w-full bg-slate-100 dark:bg-slate-900 h-1.5 rounded-full mt-4 overflow-hidden">
-                  <div 
-                    className="bg-blue-600 h-full transition-all duration-1000" 
-                    style={{ width: `${Math.min(100, (points / RANK_PROGRESSION[userRank].cost) * 100)}%` }}
-                  />
-                </div>
-                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2">{points} / {RANK_PROGRESSION[userRank].cost} XP to Level Up</p>
-                
-                {RANK_PROGRESSION[userRank].next && (
-                  <button 
-                    onClick={promoteRank}
-                    disabled={points < RANK_PROGRESSION[userRank].cost}
-                    className="w-full mt-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black dark:hover:bg-slate-100 disabled:opacity-20 transition-all active:scale-95"
-                  >
-                    Evolve System
-                  </button>
-                )}
-              </div>
-            </section>
-          </aside>
-
-          {/* Active Timeline */}
-          <div className="col-span-1 md:col-span-6">
-            <TimelineDropZone 
-              tasks={tasks} 
-              isOptimizing={isOptimizing} 
-              onOptimize={async () => {
-                setIsOptimizing(true);
-                const opt = await optimizeSchedule(tasks, templates);
-                setTasks(opt);
-                setIsOptimizing(false);
-              }}
-              toggleTimer={toggleTimer}
-              toggleTaskComplete={toggleTaskComplete}
-              onDelete={(id) => setTasks(tasks.filter(t => t.id !== id))}
-              onUpdateTask={updateTask}
-            />
-          </div>
-
-          {/* Rewards */}
-          <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
-            {/* Weekly Averages Panel */}
-            <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
-              <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" /> Weekly Avg Time
-              </h3>
-              <div className="space-y-4">
-                {weeklyAverages.length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium text-center py-4">No data yet</p>
-                ) : (
-                  weeklyAverages.map(avg => (
-                    <div key={avg.title} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: avg.color }} />
-                          <p className="text-[10px] font-black text-slate-700 dark:text-slate-200 uppercase truncate max-w-[120px]">{avg.title}</p>
-                        </div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white">{avg.avgMinutes} <span className="text-[10px] text-slate-400">min</span></p>
-                      </div>
-                      <div className="h-1 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full transition-all duration-1000" 
-                          style={{ 
-                            backgroundColor: avg.color,
-                            width: `${Math.min(100, (avg.avgMinutes / 120) * 100)}%` 
-                          }} 
-                        />
-                      </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>
-            </section>
-
-            <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
-              <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" /> Reward Store
-              </h3>
-              <div className="space-y-4">
-                {REWARD_CARDS.map(card => (
-                  <button 
-                    key={card.id}
-                    onClick={() => buyCard(card)}
-                    disabled={diamonds < card.cost}
-                    className="w-full flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700 hover:border-blue-200 dark:hover:border-blue-500/50 transition-all group disabled:opacity-50"
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl">{card.icon}</span>
-                      <div className="text-left">
-                        <p className="text-xs font-black text-slate-700 dark:text-slate-200">{card.title}</p>
-                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500">{card.description}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 bg-white dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-100 dark:border-slate-700 shadow-sm">
-                      <span className="text-[10px] font-black text-slate-600 dark:text-slate-300">{card.cost}</span>
-                      <Gem className="w-3 h-3 text-blue-500 fill-blue-500/20 diamond-3d" />
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            {inventory.length > 0 && (
-              <section className="p-6 bg-slate-900 dark:bg-slate-950 rounded-3xl shadow-2xl border border-white/5">
-                <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Inventory</h3>
-                <div className="flex flex-wrap gap-2">
-                  {inventory.map((id, idx) => {
-                    const card = REWARD_CARDS.find(c => c.id === id);
-                    return (
-                      <div key={idx} className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-xl hover:bg-white/20 transition-colors cursor-help" title={card?.title}>
-                        {card?.icon}
-                      </div>
-                    );
-                  })}
-                </div>
-              </section>
-            )}
-          </aside>
+            </div>
+          )}
         </main>
 
         {/* Focus Mode Overlay */}
