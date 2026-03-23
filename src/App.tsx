@@ -168,11 +168,16 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const soundTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize audio once
+  // Initialize audio once and request notification permissions
   useEffect(() => {
     if (!audioRef.current) {
       audioRef.current = new Audio(selectedSoundUrl);
       audioRef.current.preload = 'auto';
+    }
+
+    // Request notification permissions for background alerts
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
     }
   }, []);
 
@@ -185,9 +190,17 @@ export default function App() {
     }
   }, [selectedSoundUrl]);
 
-  const playNotification = (duration: number = 3000, loop: boolean = false) => {
+  const playNotification = (duration: number = 3000, loop: boolean = false, title?: string) => {
     const audio = audioRef.current;
     if (!audio) return;
+
+    // Show system notification if possible (works in background on many devices)
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification(title || "计划提醒", {
+        body: "您的计划时间已到！",
+        icon: "/favicon.ico"
+      });
+    }
 
     if (soundTimeoutRef.current) {
       clearTimeout(soundTimeoutRef.current);
@@ -315,7 +328,7 @@ export default function App() {
 
               // Trigger sound if we just crossed the planned duration
               if (task.actualDuration < plannedSeconds && newActualDuration >= plannedSeconds) {
-                playNotification(3000, false);
+                playNotification(3000, false, `计划完成: ${task.title}`);
               }
 
               return {
@@ -784,7 +797,7 @@ export default function App() {
             />
           </div>
 
-          {/* Fixed Constraints & Rewards */}
+          {/* Rewards */}
           <aside className="col-span-1 md:col-span-3 space-y-6 md:space-y-8">
             {/* Weekly Averages Panel */}
             <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
@@ -813,24 +826,6 @@ export default function App() {
                           }} 
                         />
                       </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </section>
-
-            <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
-              <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                <Lock className="w-4 h-4" /> Constraints
-              </h3>
-              <div className="space-y-3">
-                {tasks.filter(t => t.isLocked).length === 0 ? (
-                  <p className="text-xs text-slate-400 font-medium text-center py-4">No fixed tasks today</p>
-                ) : (
-                  tasks.filter(t => t.isLocked).map(t => (
-                    <div key={t.id} className="flex items-center justify-between p-3 bg-red-50/50 dark:bg-red-900/10 rounded-xl border border-red-100 dark:border-red-900/30">
-                      <span className="text-xs font-bold text-red-700 dark:text-red-400">{t.title}</span>
-                      <span className="text-[10px] font-black text-red-400 dark:text-red-500">{t.startTime}</span>
                     </div>
                   ))
                 )}
@@ -1265,13 +1260,6 @@ function TimelineDropZone({
           <h2 className="text-xl md:text-2xl font-black text-slate-800 dark:text-white">Active Timeline</h2>
           <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Synchronized Schedule</p>
         </div>
-        <button 
-          onClick={onOptimize}
-          disabled={isOptimizing}
-          className="w-full md:w-auto flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest shadow-xl shadow-blue-200 dark:shadow-none hover:bg-blue-700 transition-all active:scale-95 disabled:opacity-50"
-        >
-          <Sparkles className="w-4 h-4" /> {isOptimizing ? 'Calibrating...' : 'AI Sync'}
-        </button>
       </div>
 
       <div className="space-y-6 relative">
