@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import NewsView from './components/NewsView';
+import TeenNewsView from './components/TeenNewsView';
+import EDANewsView from './components/EDANewsView';
 import { 
   Plus, 
   Trash2, 
@@ -23,7 +26,14 @@ import {
   BarChart3,
   X,
   User,
-  Baby
+  Baby,
+  Newspaper,
+  Rss,
+  Search,
+  ExternalLink,
+  RefreshCw,
+  BrainCircuit,
+  Cpu
 } from 'lucide-react';
 import { format, addDays, startOfToday, parse, addMinutes } from 'date-fns';
 import confetti from 'canvas-confetti';
@@ -85,7 +95,7 @@ import { arrayMove, SortableContext, verticalListSortingStrategy, useSortable } 
 import { CSS } from '@dnd-kit/utilities';
 
 import { cn, formatDuration, getSecondsFromTime, getTimeFromSeconds } from './utils';
-import { Category, ScheduledTask, TaskTemplate, UserRank, ModuleType, RewardCard, ViewMode, ParentTask } from './types';
+import { Category, ScheduledTask, TaskTemplate, UserRank, ModuleType, RewardCard, ViewMode, ParentTask, Language } from './types';
 import { optimizeSchedule, calculateWeeklyAverages } from './services/aiService';
 
 const CATEGORIES: { name: Category; color: string }[] = [
@@ -141,6 +151,10 @@ const NOTIFICATION_SOUNDS = [
 export default function App() {
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     return (localStorage.getItem('user-view-mode') as ViewMode) || 'STUDENT';
+  });
+  const [language, setLanguage] = useState<Language>(() => {
+    const saved = localStorage.getItem('news_language');
+    return (saved as Language) || 'ZH';
   });
   const [selectedDate, setSelectedDate] = useState(startOfToday());
   const [pendingShift, setPendingShift] = useState<{ delaySeconds: number; taskIndex: number; taskTitle: string } | null>(null);
@@ -407,7 +421,13 @@ export default function App() {
   };
 
   const updateTask = (id: string, updates: Partial<ScheduledTask>) => {
-    setTasks(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    setTasks(prev => {
+      const updated = prev.map(t => t.id === id ? { ...t, ...updates } : t);
+      if (updates.startTime !== undefined || updates.duration !== undefined) {
+        return recalculateTaskTimes(updated);
+      }
+      return updated;
+    });
   };
 
   const toggleTaskComplete = (id: string) => {
@@ -561,6 +581,111 @@ export default function App() {
     setTemplates(templates.filter(t => t.id !== id));
   };
 
+  const recalculateTaskTimes = (taskList: ScheduledTask[]) => {
+    if (taskList.length === 0) return [];
+    const updated = [...taskList];
+    for (let i = 1; i < updated.length; i++) {
+      const prevTask = updated[i - 1];
+      const prevEndSeconds = getSecondsFromTime(prevTask.startTime) + prevTask.duration * 60;
+      updated[i] = {
+        ...updated[i],
+        startTime: getTimeFromSeconds(prevEndSeconds)
+      };
+    }
+    return updated;
+  };
+
+  const [isNavOpen, setIsNavOpen] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem('news_language', language);
+  }, [language]);
+
+  const t = {
+    ZH: {
+      studentPlan: '学生计划',
+      parentPlan: '家长计划',
+      financeNews: '金融资讯中心',
+      teenExplorer: '少年探索者',
+      edaArchitect: 'EDA 架构师',
+      student: '学生',
+      parent: '家长',
+      finance: '金融',
+      teen: '少年',
+      eda: 'EDA',
+      weeklyAvg: '周平均时间',
+      rewardStore: '奖励商店',
+      inventory: '物品栏',
+      theHub: '模块中心',
+      theVault: '等级系统',
+      evolveSystem: '系统进化',
+      xpToLevelUp: '经验值升级',
+      noData: '暂无数据',
+      addModule: '添加模块',
+      newCategory: '新分类',
+      newModule: '新模块',
+      cancel: '取消',
+      create: '创建',
+      name: '名称',
+      color: '颜色',
+      title: '标题',
+      time: '时间',
+      duration: '时长',
+      addToSchedule: '添加到计划',
+      noPlans: '今日无计划',
+      activeFocus: '专注中',
+      testAlarm: '测试 10 秒铃声',
+      testFireworks: '测试烟花音效',
+      selectAlarm: '选择预警声音',
+      nextUpdate: '下次更新：北京时间 08:00'
+    },
+    EN: {
+      studentPlan: 'STUDENT PLAN',
+      parentPlan: 'PARENT PLAN',
+      financeNews: 'FINANCE NEWS HUB',
+      teenExplorer: 'TEEN EXPLORER',
+      edaArchitect: 'EDA ARCHITECT',
+      student: 'Student',
+      parent: 'Parent',
+      finance: 'Finance',
+      teen: 'Teen',
+      eda: 'EDA',
+      weeklyAvg: 'Weekly Avg Time',
+      rewardStore: 'Reward Store',
+      inventory: 'Inventory',
+      theHub: 'The Hub',
+      theVault: 'The Vault',
+      evolveSystem: 'Evolve System',
+      xpToLevelUp: 'XP to Level Up',
+      noData: 'No data yet',
+      addModule: 'Add Module',
+      newCategory: 'New Category',
+      newModule: 'New Module',
+      cancel: 'Cancel',
+      create: 'Create',
+      name: 'Name',
+      color: 'Color',
+      title: 'Title',
+      time: 'Time',
+      duration: 'Duration',
+      addToSchedule: 'Add to Schedule',
+      noPlans: 'No plans for today',
+      activeFocus: 'Active Focus',
+      testAlarm: 'Test 10s Alarm',
+      testFireworks: 'Test Fireworks',
+      selectAlarm: 'Select Alarm Sound',
+      nextUpdate: 'Next update at 08:00 Beijing Time'
+    }
+  }[language];
+
+  const viewLabels = {
+    STUDENT: { label: t.student, icon: <Baby className="w-3 h-3" /> },
+    PARENT: { label: t.parent, icon: <User className="w-3 h-3" /> },
+    NEWS: { label: t.finance, icon: <Newspaper className="w-3 h-3" /> },
+    TEEN_NEWS: { label: t.teen, icon: <Zap className="w-3 h-3" /> },
+    EDA_NEWS: { label: t.eda, icon: <Cpu className="w-3 h-3" /> },
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over) return;
@@ -575,7 +700,8 @@ export default function App() {
       setTasks((items) => {
         const oldIndex = items.findIndex((t) => t.id === active.id);
         const newIndex = items.findIndex((t) => t.id === over.id);
-        return arrayMove(items, oldIndex, newIndex);
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        return recalculateTaskTimes(reordered);
       });
     }
   };
@@ -594,115 +720,136 @@ export default function App() {
                 </div>
                 <div>
                   <h1 className="text-lg md:text-xl font-black tracking-tighter text-slate-900 dark:text-white">
-                    {viewMode === 'STUDENT' ? 'STUDENT PLAN' : 'PARENT PLAN'}
+                    {viewMode === 'STUDENT' ? t.studentPlan : viewMode === 'PARENT' ? t.parentPlan : viewMode === 'NEWS' ? t.financeNews : viewMode === 'TEEN_NEWS' ? t.teenExplorer : t.edaArchitect}
                   </h1>
                 </div>
               </div>
 
-              <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <div className="relative">
                 <button 
-                  onClick={() => setViewMode('STUDENT')}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    viewMode === 'STUDENT' ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                  )}
+                  onClick={() => setIsNavOpen(!isNavOpen)}
+                  className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 text-[10px] font-black uppercase tracking-widest text-slate-700 dark:text-slate-200 shadow-sm hover:border-blue-400 transition-all tactile-tile"
                 >
-                  <Baby className="w-3 h-3" /> Student
+                  {viewLabels[viewMode].icon}
+                  <span>{viewLabels[viewMode].label}</span>
+                  <ChevronDown className={cn("w-3 h-3 transition-transform", isNavOpen && "rotate-180")} />
                 </button>
-                <button 
-                  onClick={() => setViewMode('PARENT')}
-                  className={cn(
-                    "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2",
-                    viewMode === 'PARENT' ? "bg-white dark:bg-slate-700 text-blue-600 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                  )}
-                >
-                  <User className="w-3 h-3" /> Parent
-                </button>
+
+                {isNavOpen && (
+                  <>
+                    <div 
+                      className="fixed inset-0 z-[110]" 
+                      onClick={() => setIsNavOpen(false)}
+                    />
+                    <div className="absolute top-full left-0 mt-2 w-48 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-2xl z-[120] overflow-hidden animate-in fade-in zoom-in duration-200">
+                      {(Object.keys(viewLabels) as Array<keyof typeof viewLabels>).map((mode) => (
+                        <button
+                          key={mode}
+                          onClick={() => {
+                            setViewMode(mode);
+                            setIsNavOpen(false);
+                          }}
+                          className={cn(
+                            "w-full flex items-center gap-3 px-4 py-3 text-[10px] font-black uppercase tracking-widest transition-all hover:bg-slate-50 dark:hover:bg-slate-700/50",
+                            viewMode === mode ? "text-blue-600 bg-blue-50/50 dark:bg-blue-900/20" : "text-slate-500 dark:text-slate-400"
+                          )}
+                        >
+                          {viewLabels[mode].icon}
+                          {viewLabels[mode].label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
               
               <div className="hidden md:block h-8 w-px bg-slate-200 dark:bg-slate-700" />
               
-              <div className="flex items-center gap-2 md:gap-4">
-                <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 tactile-tile">
-                  <div className="relative w-4 h-4 md:w-5 md:h-5 diamond-3d">
-                    <Gem className="w-full h-full text-blue-500 fill-blue-500/20" />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent rounded-full pointer-events-none" />
+              {!(viewMode === 'NEWS' || viewMode === 'TEEN_NEWS' || viewMode === 'EDA_NEWS') && (
+                <div className="flex items-center gap-2 md:gap-4">
+                  <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 tactile-tile">
+                    <div className="relative w-4 h-4 md:w-5 md:h-5 diamond-3d">
+                      <Gem className="w-full h-full text-blue-500 fill-blue-500/20" />
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent rounded-full pointer-events-none" />
+                    </div>
+                    <span className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-200">{diamonds}</span>
                   </div>
-                  <span className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-200">{diamonds}</span>
+                  <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 tactile-tile">
+                    <Award className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
+                    <span className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-200">{points}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 px-3 md:px-4 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 tactile-tile">
-                  <Award className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" />
-                  <span className="text-xs md:text-sm font-black text-slate-700 dark:text-slate-200">{points}</span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 md:gap-4 w-full md:w-auto justify-between md:justify-end">
-              <div className="relative">
-                <button 
-                  onClick={() => setShowSoundSettings(!showSoundSettings)}
-                  className={cn(
-                    "p-3 bg-white dark:bg-slate-800 rounded-2xl border transition-all tactile-tile text-slate-500 dark:text-slate-400",
-                    showSoundSettings ? "border-blue-500 text-blue-500" : "border-slate-100 dark:border-slate-700"
-                  )}
-                  title="选择预警声音"
-                >
-                  <Volume2 className="w-5 h-5" />
-                </button>
+              {!(viewMode === 'NEWS' || viewMode === 'TEEN_NEWS' || viewMode === 'EDA_NEWS') && (
+                <div className="relative">
+                  <button 
+                    onClick={() => setShowSoundSettings(!showSoundSettings)}
+                    className={cn(
+                      "p-3 bg-white dark:bg-slate-800 rounded-2xl border transition-all tactile-tile text-slate-500 dark:text-slate-400",
+                      showSoundSettings ? "border-blue-500 text-blue-500" : "border-slate-100 dark:border-slate-700"
+                    )}
+                    title="选择预警声音"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                  </button>
 
-                <AnimatePresence>
-                  {showSoundSettings && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute left-0 md:right-0 mt-3 w-48 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xl z-[200] p-2"
-                    >
-                      <div className="space-y-1">
-                        {NOTIFICATION_SOUNDS.map(sound => (
-                          <button
-                            key={sound.id}
+                  <AnimatePresence>
+                    {showSoundSettings && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute left-0 md:right-0 mt-3 w-48 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xl z-[200] p-2"
+                      >
+                        <div className="space-y-1">
+                          {NOTIFICATION_SOUNDS.map(sound => (
+                            <button
+                              key={sound.id}
+                              onClick={() => {
+                                setSelectedSoundUrl(sound.url);
+                                // Small delay to let the src update, then play a short preview
+                                setTimeout(() => playNotification(2000, false), 50);
+                              }}
+                              className={cn(
+                                "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-black transition-all",
+                                selectedSoundUrl === sound.url 
+                                  ? "bg-blue-600 text-white" 
+                                  : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                              )}
+                            >
+                              <span>{sound.name}</span>
+                              {selectedSoundUrl === sound.url && <Check className="w-3 h-3" />}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
+                          <button 
                             onClick={() => {
-                              setSelectedSoundUrl(sound.url);
-                              // Small delay to let the src update, then play a short preview
-                              setTimeout(() => playNotification(2000, false), 50);
+                              playNotification(3000, false);
+                              setShowSoundSettings(false);
                             }}
-                            className={cn(
-                              "w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-xs font-black transition-all",
-                              selectedSoundUrl === sound.url 
-                                ? "bg-blue-600 text-white" 
-                                : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-                            )}
+                            className="w-full py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
                           >
-                            <span>{sound.name}</span>
-                            {selectedSoundUrl === sound.url && <Check className="w-3 h-3" />}
+                            测试 10 秒铃声
                           </button>
-                        ))}
-                      </div>
-                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-slate-700 space-y-1">
-                        <button 
-                          onClick={() => {
-                            playNotification(3000, false);
-                            setShowSoundSettings(false);
-                          }}
-                          className="w-full py-2 bg-slate-900 dark:bg-slate-700 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all"
-                        >
-                          测试 10 秒铃声
-                        </button>
-                        <button 
-                          onClick={() => {
-                            fireworks();
-                            setShowSoundSettings(false);
-                          }}
-                          className="w-full py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
-                        >
-                          测试烟花音效
-                        </button>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
+                          <button 
+                            onClick={() => {
+                              fireworks();
+                              setShowSoundSettings(false);
+                            }}
+                            className="w-full py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-blue-700 transition-all"
+                          >
+                            测试烟花音效
+                          </button>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 bg-white dark:bg-slate-800 rounded-2xl p-1 border border-slate-100 dark:border-slate-700 shadow-sm tactile-tile">
                 <button onClick={() => setSelectedDate(addDays(selectedDate, -1))} className="p-2 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-colors text-slate-400"><ChevronLeft className="w-5 h-5" /></button>
@@ -723,7 +870,7 @@ export default function App() {
                 <section>
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                      <LayoutGrid className="w-4 h-4" /> The Hub
+                      <LayoutGrid className="w-4 h-4" /> {t.theHub}
                     </h2>
                     <button 
                       onClick={() => setShowAddCategory(true)}
@@ -777,7 +924,7 @@ export default function App() {
                                   className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-2xl text-slate-400 hover:text-blue-500 hover:border-blue-500 transition-all"
                                 >
                                   <Plus className="w-3 h-3" />
-                                  <span className="text-[10px] font-black uppercase tracking-widest">Add Module</span>
+                                  <span className="text-[10px] font-black uppercase tracking-widest">{t.addModule}</span>
                                 </button>
 
                                 {catTemplates.length > 0 ? (
@@ -790,7 +937,7 @@ export default function App() {
                                     />
                                   ))
                                 ) : (
-                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-2">No modules available</p>
+                                  <p className="text-[10px] text-slate-400 dark:text-slate-500 italic py-2">{t.noData}</p>
                                 )}
                               </motion.div>
                             )}
@@ -802,7 +949,7 @@ export default function App() {
                 </section>
 
                 <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
-                  <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-4">The Vault</h3>
+                  <h3 className="text-xs font-black text-blue-600 dark:text-blue-400 uppercase tracking-widest mb-4">{t.theVault}</h3>
                   <div className="flex flex-col items-center text-center">
                     <div className="text-5xl mb-3 drop-shadow-lg">{RANK_PROGRESSION[userRank].label.split(' ')[0]}</div>
                     <p className="text-xl font-black text-slate-800 dark:text-white">{RANK_PROGRESSION[userRank].label.split(' ')[1]}</p>
@@ -812,7 +959,7 @@ export default function App() {
                         style={{ width: `${Math.min(100, (points / RANK_PROGRESSION[userRank].cost) * 100)}%` }}
                       />
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2">{points} / {RANK_PROGRESSION[userRank].cost} XP to Level Up</p>
+                    <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-2">{points} / {RANK_PROGRESSION[userRank].cost} {t.xpToLevelUp}</p>
                     
                     {RANK_PROGRESSION[userRank].next && (
                       <button 
@@ -820,7 +967,7 @@ export default function App() {
                         disabled={points < RANK_PROGRESSION[userRank].cost}
                         className="w-full mt-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-black dark:hover:bg-slate-100 disabled:opacity-20 transition-all active:scale-95"
                       >
-                        Evolve System
+                        {t.evolveSystem}
                       </button>
                     )}
                   </div>
@@ -835,12 +982,15 @@ export default function App() {
                   onOptimize={async () => {
                     setIsOptimizing(true);
                     const opt = await optimizeSchedule(tasks, templates);
-                    setTasks(opt);
+                    setTasks(recalculateTaskTimes(opt));
                     setIsOptimizing(false);
                   }}
                   toggleTimer={toggleTimer}
                   toggleTaskComplete={toggleTaskComplete}
-                  onDelete={(id) => setTasks(tasks.filter(t => t.id !== id))}
+                  onDelete={(id) => {
+                    const filtered = tasks.filter(t => t.id !== id);
+                    setTasks(recalculateTaskTimes(filtered));
+                  }}
                   onUpdateTask={updateTask}
                 />
               </div>
@@ -850,11 +1000,11 @@ export default function App() {
                 {/* Weekly Averages Panel */}
                 <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
                   <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <BarChart3 className="w-4 h-4" /> Weekly Avg Time
+                    <BarChart3 className="w-4 h-4" /> {t.weeklyAvg}
                   </h3>
                   <div className="space-y-4">
                     {weeklyAverages.length === 0 ? (
-                      <p className="text-xs text-slate-400 font-medium text-center py-4">No data yet</p>
+                      <p className="text-xs text-slate-400 font-medium text-center py-4">{t.noData}</p>
                     ) : (
                       weeklyAverages.map(avg => (
                         <div key={avg.title} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-700">
@@ -882,7 +1032,7 @@ export default function App() {
 
                 <section className="p-6 bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 tactile-tile">
                   <h3 className="text-[11px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4" /> Reward Store
+                    <Sparkles className="w-4 h-4" /> {t.rewardStore}
                   </h3>
                   <div className="space-y-4">
                     {REWARD_CARDS.map(card => (
@@ -910,7 +1060,7 @@ export default function App() {
 
                 {inventory.length > 0 && (
                   <section className="p-6 bg-slate-900 dark:bg-slate-950 rounded-3xl shadow-2xl border border-white/5">
-                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">Inventory</h3>
+                    <h3 className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">{t.inventory}</h3>
                     <div className="flex flex-wrap gap-2">
                       {inventory.map((id, idx) => {
                         const card = REWARD_CARDS.find(c => c.id === id);
@@ -925,19 +1075,19 @@ export default function App() {
                 )}
               </aside>
             </div>
-          ) : (
+          ) : viewMode === 'PARENT' ? (
             <div className="max-w-2xl mx-auto space-y-8">
               {/* Parent View: Simple & Concise */}
               <section className="p-8 bg-white dark:bg-slate-800 rounded-[2.5rem] border border-slate-100 dark:border-slate-700 tactile-tile">
                 <div className="mb-8">
-                  <h2 className="text-2xl font-black text-slate-800 dark:text-white">Parent Planner</h2>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white">{t.parentPlan}</h2>
                   <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.2em] mt-1">Simple Daily Schedule</p>
                 </div>
 
                 <div className="space-y-6">
                   <div className="flex gap-4">
                     <div className="flex-1">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Task Title</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.title}</label>
                       <input 
                         type="text"
                         placeholder="e.g. Family Dinner"
@@ -947,7 +1097,7 @@ export default function App() {
                       />
                     </div>
                     <div className="w-32">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Time</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.time}</label>
                       <input 
                         type="time"
                         value={parentTaskTime}
@@ -960,7 +1110,7 @@ export default function App() {
                     onClick={addParentTask}
                     className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-blue-500/30 hover:bg-blue-700 transition-all active:scale-[0.98]"
                   >
-                    Add to Schedule
+                    {t.addToSchedule}
                   </button>
                 </div>
               </section>
@@ -969,7 +1119,7 @@ export default function App() {
                 {parentTasks.length === 0 ? (
                   <div className="py-20 text-center bg-slate-50/50 dark:bg-slate-900/20 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
                     <Clock className="w-12 h-12 text-slate-200 dark:text-slate-800 mx-auto mb-4" />
-                    <p className="text-slate-400 dark:text-slate-600 text-xs font-black uppercase tracking-widest">No plans for today</p>
+                    <p className="text-slate-400 dark:text-slate-600 text-xs font-black uppercase tracking-widest">{t.noPlans}</p>
                   </div>
                 ) : (
                   parentTasks.map(task => (
@@ -983,7 +1133,7 @@ export default function App() {
                     >
                       <div className="flex items-center gap-6">
                         <div className="w-16 text-center">
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t.time}</p>
                           <p className="text-sm font-black text-slate-800 dark:text-white">{task.time}</p>
                         </div>
                         <div className="h-8 w-[1px] bg-slate-100 dark:bg-slate-700" />
@@ -1016,6 +1166,12 @@ export default function App() {
                 )}
               </div>
             </div>
+          ) : viewMode === 'NEWS' ? (
+            <NewsView />
+          ) : viewMode === 'TEEN_NEWS' ? (
+            <TeenNewsView />
+          ) : (
+            <EDANewsView />
           )}
         </main>
 
@@ -1033,7 +1189,7 @@ export default function App() {
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">Active Focus</p>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{t.activeFocus}</p>
                   <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">
                     {Math.round(Math.min(100, ((tasks.find(t => t.isRunning)?.actualDuration || 0) / ((tasks.find(t => t.isRunning)?.duration || 1) * 60)) * 100))}%
                   </p>
@@ -1064,10 +1220,10 @@ export default function App() {
               className="fixed inset-0 z-[1000] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm"
             >
               <div className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-700">
-                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6 uppercase tracking-tighter">New Category</h3>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6 uppercase tracking-tighter">{t.newCategory}</h3>
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Name</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.name}</label>
                     <input 
                       type="text" 
                       value={newCatName}
@@ -1077,7 +1233,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Color</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.color}</label>
                     <div className="flex gap-3">
                       {['#3b82f6', '#8b5cf6', '#10b981', '#ef4444', '#f59e0b', '#64748b', '#ec4899', '#06b6d4'].map(color => (
                         <button 
@@ -1097,13 +1253,13 @@ export default function App() {
                       onClick={() => setShowAddCategory(false)}
                       className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest"
                     >
-                      Cancel
+                      {t.cancel}
                     </button>
                     <button 
                       onClick={addCategory}
                       className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
                     >
-                      Create
+                      {t.create}
                     </button>
                   </div>
                 </div>
@@ -1119,11 +1275,11 @@ export default function App() {
               className="fixed inset-0 z-[1000] flex items-center justify-center p-8 bg-black/60 backdrop-blur-sm"
             >
               <div className="bg-white dark:bg-slate-800 p-8 rounded-[2rem] max-w-md w-full shadow-2xl border border-slate-100 dark:border-slate-700">
-                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6 uppercase tracking-tighter">New Module</h3>
+                <h3 className="text-xl font-black text-slate-800 dark:text-white mb-6 uppercase tracking-tighter">{t.newModule}</h3>
                 <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-6">Adding to {showAddTemplate}</p>
                 <div className="space-y-6">
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Title</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.title}</label>
                     <input 
                       type="text" 
                       value={newTplTitle}
@@ -1133,7 +1289,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Default Duration (Min)</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">{t.duration} (Min)</label>
                     <input 
                       type="number" 
                       value={newTplDuration}
@@ -1146,13 +1302,13 @@ export default function App() {
                       onClick={() => setShowAddTemplate(null)}
                       className="flex-1 py-4 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-2xl font-black text-xs uppercase tracking-widest"
                     >
-                      Cancel
+                      {t.cancel}
                     </button>
                     <button 
                       onClick={() => addTemplate(showAddTemplate)}
                       className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-blue-500/30"
                     >
-                      Add to Hub
+                      {t.create}
                     </button>
                   </div>
                 </div>

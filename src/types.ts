@@ -46,11 +46,32 @@ export interface RewardCard {
 
 export type UserRank = 'Beginner' | 'Consistent' | 'Productive' | 'Master' | 'Elite';
 
-export type ViewMode = 'STUDENT' | 'PARENT';
+export type ViewMode = 'STUDENT' | 'PARENT' | 'NEWS' | 'TEEN_NEWS' | 'EDA_NEWS';
+
+export type Language = 'ZH' | 'EN';
 
 export interface ParentTask {
   id: string;
   time: string; // "HH:mm"
   title: string;
   isCompleted: boolean;
+}
+
+export interface NewsItem {
+  id: string;
+  title: string;
+  content: string;
+  summary?: string;
+  url: string;
+  source: string;
+  date: string;
+  isRead: boolean;
+  category?: string;
+}
+
+export interface NewsSource {
+  id: string;
+  name: string;
+  url: string;
+  icon?: string;
 }

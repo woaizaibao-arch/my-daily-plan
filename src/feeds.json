@@ -1,0 +1,34 @@
+{
+  "eda_feeds": [
+    {
+      "category": "行业情报",
+      "name": "SemiEngineering (Business)",
+      "url": "https://semiengineering.com/category/business/feed/",
+      "focus": ["收并购", "投融资", "行业预测"]
+    },
+    {
+      "category": "供应链动态",
+      "name": "DIGITIMES (Semiconductor)",
+      "url": "https://www.digitimes.com/rss/semiconductor.xml",
+      "focus": ["晶圆代工产能", "供应链安全"]
+    },
+    {
+      "category": "竞争对手",
+      "name": "Cadence / Synopsys IR",
+      "url": "https://news.synopsys.com/index.php?s=20295&pagetemplate=rss",
+      "focus": ["官方财报", "股东大会记录", "战略愿景"]
+    },
+    {
+      "category": "政策红利",
+      "name": "CSIS / SIA News",
+      "url": "https://www.sia-online.org/feed/",
+      "focus": ["半导体法案", "出口限制", "政府补贴"]
+    },
+    {
+      "category": "前沿视角",
+      "name": "EE Times (Executive View)",
+      "url": "https://www.eetimes.com/category/executive-view/feed/",
+      "focus": ["行业领袖访谈", "市场准入准则"]
+    }
+  ]
+}
