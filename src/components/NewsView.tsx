@@ -616,9 +616,17 @@ const NewsView: React.FC = () => {
                   </button>
                 </div>
               </div>
-              <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                {selectedItem.title}
-              </h2>
+              <a 
+  href={selectedItem.url} 
+  target="_blank" 
+  rel="noopener noreferrer"
+  className="hover:text-blue-600 transition-all cursor-pointer group/title"
+>
+  <h2 className="text-lg lg:text-2xl font-black text-slate-900 dark:text-white tracking-tight leading-tight flex items-center gap-2">
+    {selectedItem.title}
+    <ExternalLink className="w-4 h-4 opacity-0 group-hover/title:opacity-100 transition-opacity" />
+  </h2>
+</a>
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 lg:p-8 space-y-6 lg:space-y-8 custom-scrollbar">
