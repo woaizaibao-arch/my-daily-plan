@@ -110,250 +110,45 @@ const NewsView: React.FC = () => {
     return updatePoint;
   };
 
-  const fetchNews = async () => {
+
+
+      const fetchNews = async () => {
     setIsLoading(true);
     try {
-      const updateTime = getLatestUpdatePoint().toISOString();
-      
-      const mockItemsEN: NewsItem[] = [
-        // Bloomberg
-        {
-          id: 'b1',
-          title: 'Bloomberg: Global Markets React to Central Bank Signals',
-          content: 'Major indices showed volatility today as global central banks signaled a potential pause in rate hikes, citing cooling inflation data but tight labor markets.',
-          url: 'https://www.bloomberg.com/news/articles/global-markets-react',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'b2',
-          title: 'Bloomberg: Energy Transition Accelerates in Emerging Economies',
-          content: 'A new report highlights a surge in renewable energy investments across Southeast Asia and Africa, driven by falling costs of solar and wind technology.',
-          url: 'https://www.bloomberg.com/news/articles/energy-transition',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'b3',
-          title: 'Bloomberg: Tech Sector Braces for New Antitrust Regulations',
-          content: 'Regulatory bodies are proposing stricter rules for digital platforms, focusing on data portability and fair competition in the app store ecosystem.',
-          url: 'https://www.bloomberg.com/news/articles/tech-antitrust',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        // Reuters
-        {
-          id: 'r1',
-          title: 'Reuters: Tech Giants Face New Regulatory Scrutiny in EU',
-          content: 'The European Commission has opened a series of investigations into the content privacy practices of several major tech firms, focusing on how user information is shared across platforms.',
-          url: 'https://www.reuters.com/business/tech-giants-scrutiny',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'r2',
-          title: 'Reuters: Global Shipping Rates Stabilize as Port Congestion Eases',
-          content: 'Freight costs have reached their lowest levels in 18 months, providing relief for global retailers ahead of the peak holiday shopping season.',
-          url: 'https://www.reuters.com/business/shipping-rates',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'r3',
-          title: 'Reuters: Sustainable Finance Gains Momentum in Corporate Bonds',
-          content: 'Green bond issuance has hit record highs this quarter, as companies face increasing pressure from investors to align with ESG targets.',
-          url: 'https://www.reuters.com/business/green-bonds',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        // WSJ
-        {
-          id: 'w1',
-          title: 'WSJ: Supply Chain Disruptions Ease as Port Congestion Clears',
-          content: 'A new report from the WSJ notes that global shipping delays have reached a two-year low, providing relief for retailers ahead of the holiday season.',
-          url: 'https://www.wsj.com/articles/supply-chain-relief',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'w2',
-          title: 'WSJ: Remote Work Trends Reshape Commercial Real Estate',
-          content: 'Office vacancy rates in major cities continue to climb, forcing developers to rethink urban spaces and consider residential conversions.',
-          url: 'https://www.wsj.com/articles/office-real-estate',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'w3',
-          title: 'WSJ: Consumer Spending Remains Resilient Despite Inflation',
-          content: 'Retail sales data shows that households are continuing to spend on travel and services, even as prices for essential goods remain elevated.',
-          url: 'https://www.wsj.com/articles/consumer-spending',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        // Financial Times
-        {
-          id: 'f1',
-          title: 'FT: Emerging Markets Attract Record Capital Inflows',
-          content: 'Investors are pouring capital into emerging markets at a record pace, driven by attractive valuations and improving economic outlooks in Southeast Asia, according to the Financial Times.',
-          url: 'https://www.ft.com/content/emerging-markets-inflow',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'f2',
-          title: 'FT: Central Banks Navigate "Last Mile" of Inflation Battle',
-          content: 'Policy makers are debating the timing of potential rate cuts as core inflation proves stickier than expected in several advanced economies.',
-          url: 'https://www.ft.com/content/inflation-battle',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'f3',
-          title: 'FT: Venture Capital Funding Shifts Toward AI Infrastructure',
-          content: 'Investment patterns are changing as VCs prioritize startups building the hardware and software foundations for generative AI models.',
-          url: 'https://www.ft.com/content/vc-ai-funding',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        }
-      ];
+      // 使用公开代理绕过跨域限制，抓取真实的 RSS 
+      const proxy = "https://api.allorigins.win/raw?url=";
+      const rssUrl = language === 'ZH' 
+        ? "https://rsshub.app/reuters/world/china" // 示例：路透社中国新闻
+        : "https://feeds.a.dj.com/rss/RSSWorldNews.xml"; // 示例：WSJ 世界新闻
 
-      const mockItemsZH: NewsItem[] = [
-        // Bloomberg
-        {
-          id: 'b1',
-          title: '彭博社：全球市场对央行信号做出反应',
-          content: '由于全球央行暗示可能暂停加息，理由是通胀数据降温但劳动力市场依然紧缺，主要指数今天出现波动。',
-          url: 'https://www.bloomberg.com/news/articles/global-markets-react',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'b2',
-          title: '彭博社：新兴经济体能源转型加速',
-          content: '一份新报告强调，在太阳能和风能技术成本下降的推动下，东南亚和非洲的可再生能源投资激增。',
-          url: 'https://www.bloomberg.com/news/articles/energy-transition',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'b3',
-          title: '彭博社：科技行业准备迎接新的反垄断法规',
-          content: '监管机构正提议对数字平台实施更严格的规则，重点关注应用商店生态系统中的数据可移植性和公平竞争。',
-          url: 'https://www.bloomberg.com/news/articles/tech-antitrust',
-          source: 'Bloomberg',
-          date: updateTime,
-          isRead: false
-        },
-        // Reuters
-        {
-          id: 'r1',
-          title: '路透社：科技巨头在欧盟面临新的监管审查',
-          content: '欧盟委员会已对几家主要科技公司的内容隐私做法展开一系列调查，重点关注用户信息如何在平台间共享。',
-          url: 'https://www.reuters.com/business/tech-giants-scrutiny',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'r2',
-          title: '路透社：随着港口拥堵缓解，全球运费趋于稳定',
-          content: '货运成本已降至 18 个月以来的最低水平，在假期购物高峰季节到来之前为全球零售商提供了缓解。',
-          url: 'https://www.reuters.com/business/shipping-rates',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'r3',
-          title: '路透社：可持续金融在公司债券中势头强劲',
-          content: '本季度绿色债券发行量创下历史新高，因为公司面临来自投资者越来越大的压力，要求其符合 ESG 目标。',
-          url: 'https://www.reuters.com/business/green-bonds',
-          source: 'Reuters',
-          date: updateTime,
-          isRead: false
-        },
-        // WSJ
-        {
-          id: 'w1',
-          title: '华尔街日报：随着港口拥堵清除，供应链中断缓解',
-          content: '《华尔街日报》的一份新报告指出，全球航运延误已降至两年来的最低点，在假期季节到来之前为零售商提供了缓解。',
-          url: 'https://www.wsj.com/articles/supply-chain-relief',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'w2',
-          title: '华尔街日报：远程办公趋势重塑商业地产',
-          content: '主要城市的写字楼空置率继续攀升，迫使开发商重新思考城市空间并考虑住宅改造。',
-          url: 'https://www.wsj.com/articles/office-real-estate',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'w3',
-          title: '华尔街日报：尽管存在通胀，消费者支出仍具韧性',
-          content: '零售销售数据显示，尽管基本商品价格仍然高企，但家庭仍在继续在旅游和服务上支出。',
-          url: 'https://www.wsj.com/articles/consumer-spending',
-          source: 'WSJ',
-          date: updateTime,
-          isRead: false
-        },
-        // Financial Times
-        {
-          id: 'f1',
-          title: '金融时报：新兴市场吸引创纪录的资本流入',
-          content: '据《金融时报》报道，在东南亚估值吸引力和经济前景改善的推动下，投资者正以创纪录的速度向新兴市场投入资本。',
-          url: 'https://www.ft.com/content/emerging-markets-inflow',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'f2',
-          title: '金融时报：央行应对通胀战役的“最后一英里”',
-          content: '由于几个先进经济体的核心通胀证明比预期更具粘性，政策制定者正在辩论潜在降息的时机。',
-          url: 'https://www.ft.com/content/inflation-battle',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        },
-        {
-          id: 'f3',
-          title: '金融时报：风险投资转向 AI 基础设施',
-          content: '随着风投优先考虑为生成式 AI 模型构建硬件和软件基础的初创公司，投资模式正在发生变化。',
-          url: 'https://www.ft.com/content/vc-ai-funding',
-          source: 'Financial Times',
-          date: updateTime,
-          isRead: false
-        }
-      ];
+      const response = await fetch(`${proxy}${encodeURIComponent(rssUrl)}`);
+      const text = await response.text();
       
-      setItems(language === 'ZH' ? mockItemsZH : mockItemsEN);
+      // 简单的 XML 解析逻辑（为了在网页版直接运行，不增加复杂库）
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(text, "text/xml");
+      const items = Array.from(xml.querySelectorAll("item")).slice(0, 10);
+      
+      const realItems: NewsItem[] = items.map((el, idx) => ({
+        id: `real-${idx}`,
+        title: el.querySelector("title")?.textContent || "No Title",
+        content: el.querySelector("description")?.textContent?.replace(/<[^>]*>/g, '').slice(0, 150) + "..." || "No Content",
+        url: el.querySelector("link")?.textContent || "#",
+        source: language === 'ZH' ? '路透社' : 'WSJ',
+        date: el.querySelector("pubDate")?.textContent || new Date().toISOString(),
+        isRead: false
+      }));
+
+      setItems(realItems);
       localStorage.setItem('news_last_fetch_v2', new Date().toISOString());
     } catch (error) {
-      console.error('Failed to fetch news:', error);
+      console.error('Failed to fetch real news:', error);
+      // 如果抓取失败，回退到原来的 mock 数据以免页面空白
+      setItems(language === 'ZH' ? mockItemsZH : mockItemsEN);
     } finally {
       setIsLoading(false);
     }
   };
-
   useEffect(() => {
     fetchNews();
   }, [language]);
