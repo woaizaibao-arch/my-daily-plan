@@ -27,12 +27,19 @@ import { cn } from '../utils';
 import { NewsItem, NewsSource, Language } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
-const DEFAULT_SOURCES: NewsSource[] = [
+const SOURCES_EN: NewsSource[] = [
   { id: '1', name: 'SemiEngineering (Business)', url: 'https://semiengineering.com/category/business/feed/' },
   { id: '2', name: 'DIGITIMES (Semiconductor)', url: 'https://www.digitimes.com/rss/semiconductor.xml' },
   { id: '3', name: 'Cadence / Synopsys IR', url: 'https://news.synopsys.com/index.php?s=20295&pagetemplate=rss' },
   { id: '4', name: 'CSIS / SIA News', url: 'https://www.sia-online.org/feed/' },
   { id: '5', name: 'EE Times (Executive View)', url: 'https://www.eetimes.com/category/executive-view/feed/' },
+];
+
+const SOURCES_ZH: NewsSource[] = [
+  { id: 'z1', name: '机器之心', url: 'https://www.jiqizhixin.com/' },
+  { id: 'z2', name: '36氪', url: 'https://36kr.com/' },
+  { id: 'z3', name: 'IT之家', url: 'https://www.ithome.com/' },
+  { id: 'z4', name: '电子工程专辑', url: 'https://www.eet-china.com/' },
 ];
 
 const EDANewsView: React.FC = () => {
@@ -42,7 +49,8 @@ const EDANewsView: React.FC = () => {
   });
   const [sources, setSources] = useState<NewsSource[]>(() => {
     const saved = localStorage.getItem('eda_news_sources_v2');
-    return saved ? JSON.parse(saved) : DEFAULT_SOURCES;
+    if (saved) return JSON.parse(saved);
+    return language === 'ZH' ? SOURCES_ZH : SOURCES_EN;
   });
   const [items, setItems] = useState<NewsItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
@@ -57,11 +65,18 @@ const EDANewsView: React.FC = () => {
   }, [selectedItem]);
 
   useEffect(() => {
-    localStorage.setItem('eda_news_sources_v1', JSON.stringify(sources));
+    localStorage.setItem('eda_news_sources_v2', JSON.stringify(sources));
   }, [sources]);
 
   useEffect(() => {
-    localStorage.setItem('news_language', language);
+    localStorage.setItem('eda_news_language_v2', language);
+    // When language changes, if we haven't customized sources, update them to defaults for that language
+    const saved = localStorage.getItem('eda_news_sources_v2');
+    if (!saved) {
+      setSources(language === 'ZH' ? SOURCES_ZH : SOURCES_EN);
+    }
+    setActiveSourceId('all');
+    fetchNews();
   }, [language]);
 
   const t = {
@@ -77,6 +92,7 @@ const EDANewsView: React.FC = () => {
       analyzing: '正在进行战略价值评估...',
       generateSummary: '进行战略价值评估',
       readMore: '原文可在源站查看。点击外部链接图标阅读更多。',
+      viewOriginal: '查看原文',
       selectArticle: '选择战略简报',
       selectArticleDesc: '从列表中选择一条半导体战略动态，查看世界级战略顾问为您准备的深度分析。',
       summaryPrompt: (title: string, content: string) => `Role: 你是一位世界级的半导体行业战略分析师（Strategy Consultant）。
@@ -111,6 +127,7 @@ Output Template (输出格式):
       analyzing: 'Performing strategic value assessment...',
       generateSummary: 'Perform Strategic Value Assessment',
       readMore: 'Full article available at source. Click the external link icon to read more.',
+      viewOriginal: 'View Original',
       selectArticle: 'Select Strategic Brief',
       selectArticleDesc: 'Choose a semiconductor strategic update from the list to see the deep analysis prepared by a world-class strategy consultant.',
       summaryPrompt: (title: string, content: string) => `Role: You are a world-class semiconductor industry Strategy Consultant.
@@ -310,13 +327,13 @@ Content: ${content}`,
       ];
 
       const mockItemsZH: NewsItem[] = [
-        // SemiEngineering (Business)
+        // 机器之心 (jiqizhixin.com)
         {
           id: 'se1',
           title: '收并购：Synopsys 完成对 Ansys 的收购，增强仿真产品组合',
           content: '这笔 350 亿美元的交易标志着 EDA 和仿真市场的重大整合，旨在提供统一的设计到分析工作流程。',
-          url: 'https://semiengineering.com/synopsys-ansys-acquisition-complete',
-          source: 'SemiEngineering (Business)',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false,
           category: 'M&A'
@@ -325,8 +342,8 @@ Content: ${content}`,
           id: 'se2',
           title: '市场份额：Cadence 在数字实现工具领域取得进展',
           content: '最近的市场报告显示，随着顶级半导体公司采用新的 AI 驱动的布局布线解决方案，市场份额正在发生转移。',
-          url: 'https://semiengineering.com/eda-market-share-shift',
-          source: 'SemiEngineering (Business)',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false,
           category: 'Market Share'
@@ -335,19 +352,19 @@ Content: ${content}`,
           id: 'se3',
           title: '代工厂：TSMC 与 EDA 合作伙伴就 2nm 设计基础设施达成一致',
           content: '此次合作确保了 EDA 工具针对 2nm 节点全环绕栅极 (GAA) 晶体管的独特要求进行了全面优化。',
-          url: 'https://semiengineering.com/tsmc-2nm-eda-alignment',
-          source: 'SemiEngineering (Business)',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false,
           category: 'Foundry'
         },
-        // DIGITIMES (Semiconductor)
+        // 36氪 (36kr.com)
         {
           id: 'd1',
           title: '供应链：全球代工厂在 AI 芯片需求激增中扩大产能',
           content: '主要代工厂正在加速其扩张计划，以满足对高性能计算和 AI 加速器前所未有的需求。',
-          url: 'https://www.digitimes.com/news/a20240401PD200.html',
-          source: 'DIGITIMES (Semiconductor)',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false,
           category: 'Supply Chain'
@@ -356,8 +373,8 @@ Content: ${content}`,
           id: 'd2',
           title: '代工厂：三星电子获得 AI 初创公司的大量 3nm 订单',
           content: '三星的 3nm GAA 工艺在寻求提高能效和性能的 AI 芯片设计人员中越来越受欢迎。',
-          url: 'https://www.digitimes.com/news/a20240401PD201.html',
-          source: 'DIGITIMES (Semiconductor)',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false,
           category: 'Foundry'
@@ -366,19 +383,19 @@ Content: ${content}`,
           id: 'd3',
           title: '政策：韩国宣布新的半导体研发补贴',
           content: '政府旨在通过为先进研发提供重大财政支持来加强国内半导体生态系统。',
-          url: 'https://www.digitimes.com/news/a20240401PD202.html',
-          source: 'DIGITIMES (Semiconductor)',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false,
           category: 'Policy'
         },
-        // Cadence / Synopsys IR
+        // IT之家 (ithome.com)
         {
           id: 'ir1',
           title: '战略路线图：Synopsys 揭晓下一代 AI 驱动的 EDA 套件',
           content: '新的路线图侧重于在整个设计流程中深度集成生成式 AI，以自动执行重复性任务并优化结果。',
-          url: 'https://news.synopsys.com/roadmap-ai-eda',
-          source: 'Cadence / Synopsys IR',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false,
           category: 'Roadmap'
@@ -387,8 +404,8 @@ Content: ${content}`,
           id: 'ir2',
           title: '战略：Cadence 扩大与领先超大规模企业的合作伙伴关系',
           content: '此次战略合作旨在针对云环境优化 EDA 工作负载，并为数据中心开发定制硅解决方案。',
-          url: 'https://www.cadence.com/ir-strategy-hyperscale',
-          source: 'Cadence / Synopsys IR',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false,
           category: 'Roadmap'
@@ -397,19 +414,19 @@ Content: ${content}`,
           id: 'ir3',
           title: '收并购：Synopsys 宣布对 AI 芯片初创公司的战略投资',
           content: '此次投资符合 Synopsys 在 AI 硬件领域促进创新并将新技术集成到其 EDA 工具中的战略。',
-          url: 'https://news.synopsys.com/ir-ai-investment',
-          source: 'Cadence / Synopsys IR',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false,
           category: 'M&A'
         },
-        // CSIS / SIA News
+        // 电子工程专辑 (eet-china.com)
         {
           id: 'cs1',
           title: '政策：美国政府敲定芯片法案补贴规则',
           content: '新法规明确了获得联邦资金的要求以及在某些地区扩大产能的限制。',
-          url: 'https://www.sia-online.org/chips-act-final-rules',
-          source: 'CSIS / SIA News',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'Policy'
@@ -418,8 +435,8 @@ Content: ${content}`,
           id: 'cs2',
           title: '政策：先进半导体设备出口限制收紧',
           content: '出口管制清单的新更新旨在进一步限制先进光刻和蚀刻工具流向特定市场。',
-          url: 'https://www.sia-online.org/export-restrictions-update',
-          source: 'CSIS / SIA News',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'Policy'
@@ -428,19 +445,19 @@ Content: ${content}`,
           id: 'cs3',
           title: '知识产权诉讼：主要 EDA 厂商解决长期专利纠纷',
           content: '和解协议包括一项交叉许可协议，允许两家公司在各自的工具中使用彼此的专利技术。',
-          url: 'https://www.sia-online.org/eda-patent-settlement',
-          source: 'CSIS / SIA News',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'IP Litigation'
         },
-        // EE Times (Executive View)
+        // 电子工程专辑 (eet-china.com)
         {
           id: 'ee1',
           title: '战略路线图：CEO 访谈 - AI 时代的 EDA 未来',
           content: '行业领袖讨论了 AI 对芯片设计的变革性影响，以及在快速发展的市场中保持竞争力所需的战略转变。',
-          url: 'https://www.eetimes.com/ceo-interview-eda-ai-future',
-          source: 'EE Times (Executive View)',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'Roadmap'
@@ -449,8 +466,8 @@ Content: ${content}`,
           id: 'ee2',
           title: '战略：应对半导体行业的跨国政治格局',
           content: '高管们分享了他们对在碎片化的全球市场中运营的挑战以及供应链韧性重要性的看法。',
-          url: 'https://www.eetimes.com/semiconductor-geopolitics-strategy',
-          source: 'EE Times (Executive View)',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'Roadmap'
@@ -459,8 +476,8 @@ Content: ${content}`,
           id: 'ee3',
           title: '市场份额：定制芯片的兴起及其对 EDA 厂商的影响',
           content: '随着越来越多的系统公司开发自己的芯片，EDA 厂商正在调整其业务模式以支持定制设计要求。',
-          url: 'https://www.eetimes.com/custom-silicon-eda-impact',
-          source: 'EE Times (Executive View)',
+          url: 'https://www.eet-china.com/',
+          source: '电子工程专辑',
           date: updateTime,
           isRead: false,
           category: 'Market Share'
@@ -477,9 +494,6 @@ Content: ${content}`,
     }
   };
 
-  useEffect(() => {
-    fetchNews();
-  }, [language]);
 
   const generateSummary = async (item: NewsItem) => {
     if (item.summary) return;
@@ -506,11 +520,12 @@ Content: ${content}`,
   };
 
   const filteredItems = items
-    .filter(item => 
-      (activeSourceId === 'all' || item.source === activeSourceId) &&
-      (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-       item.content.toLowerCase().includes(searchQuery.toLowerCase()))
-    )
+    .filter(item => {
+      const activeSource = sources.find(s => s.id === activeSourceId);
+      return (activeSourceId === 'all' || item.source === activeSource?.name) &&
+        (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+         item.content.toLowerCase().includes(searchQuery.toLowerCase()));
+    })
     .sort((a, b) => {
       const priority = ['M&A', 'Policy', '收并购', '政策'];
       const aPriority = priority.some(p => a.category?.includes(p) || a.title.includes(p)) ? 1 : 0;
@@ -570,8 +585,9 @@ Content: ${content}`,
             <button 
               onClick={() => {
                 if (confirm(t.resetConfirm)) {
-                  setSources(DEFAULT_SOURCES);
+                  setSources(language === 'ZH' ? SOURCES_ZH : SOURCES_EN);
                   setActiveSourceId('all');
+                  localStorage.removeItem('eda_news_sources_v2');
                 }
               }}
               className="p-1.5 bg-teal-50 dark:bg-teal-900/20 text-teal-500 rounded-lg hover:bg-teal-100 transition-colors"
@@ -742,12 +758,16 @@ Content: ${content}`,
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => window.open(selectedItem.url, '_blank')}
-                    className="p-2 lg:p-3 bg-slate-900 text-teal-500 rounded-none border border-slate-800 hover:bg-slate-800 transition-all"
+                  <a 
+                    href={selectedItem.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 lg:p-3 bg-slate-900 text-teal-500 rounded-none border border-slate-800 hover:bg-slate-800 transition-all flex items-center gap-2"
+                    title={t.viewOriginal}
                   >
                     <ExternalLink className="w-4 h-4" />
-                  </button>
+                    <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">{t.viewOriginal}</span>
+                  </a>
                   <button 
                     onClick={() => {
                       setSelectedItem(null);

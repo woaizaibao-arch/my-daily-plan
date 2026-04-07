@@ -1629,13 +1629,13 @@ function SortableTaskItem({
         isDragging && "z-50"
       )}
     >
-      <div className="md:absolute md:left-0 md:top-1 md:text-right w-16 md:w-24 flex flex-col items-center md:items-end justify-start gap-2 shrink-0">
+      <div className="md:absolute md:left-0 md:top-1 md:text-right w-20 md:w-24 flex flex-col items-center md:items-end justify-start gap-2 shrink-0">
         <div className="relative group/time w-full">
           <input 
             type="time" 
             value={task.startTime}
             onChange={(e) => onUpdateTask(task.id, { startTime: e.target.value })}
-            className="text-[10px] md:text-[11px] font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-1 md:px-3 py-1.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:border-blue-300 transition-all w-full text-center md:text-right"
+            className="text-[10px] md:text-[11px] font-black text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 px-2 md:px-3 py-1.5 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500/20 cursor-pointer hover:border-blue-300 transition-all w-full text-center md:text-right"
           />
         </div>
         <div className="flex items-center gap-1 w-full">
@@ -1644,7 +1644,7 @@ function SortableTaskItem({
               type="number" 
               value={task.duration}
               onChange={(e) => onUpdateTask(task.id, { duration: parseInt(e.target.value) || 0 })}
-              className="text-[9px] font-black text-slate-600 dark:text-slate-400 bg-transparent border-none p-0 w-6 md:w-10 text-center md:text-right focus:ring-0 cursor-pointer"
+              className="text-[9px] font-black text-slate-600 dark:text-slate-400 bg-transparent border-none p-0 w-8 md:w-10 text-center md:text-right focus:ring-0 cursor-pointer"
             />
             <span className="text-[9px] font-black text-slate-300 dark:text-slate-600 ml-0.5">m</span>
           </div>

@@ -27,20 +27,27 @@ import { cn } from '../utils';
 import { NewsItem, NewsSource, Language } from '../types';
 import { GoogleGenAI } from "@google/genai";
 
-const DEFAULT_SOURCES: NewsSource[] = [
+const SOURCES_EN: NewsSource[] = [
   { id: '1', name: 'Science & Tech', url: 'https://www.snexplores.org/feed' },
   { id: '2', name: 'Global Currents', url: 'https://www.pbs.org/newshour/classroom/feed/' },
   { id: '3', name: 'Maker News', url: 'https://hackaday.com/blog/feed/' },
 ];
 
+const SOURCES_ZH: NewsSource[] = [
+  { id: 'z1', name: '机器之心', url: 'https://www.jiqizhixin.com/' },
+  { id: 'z2', name: '36氪', url: 'https://36kr.com/' },
+  { id: 'z3', name: 'IT之家', url: 'https://www.ithome.com/' },
+];
+
 const TeenNewsView: React.FC = () => {
   const [language, setLanguage] = useState<Language>(() => {
-    const saved = localStorage.getItem('news_language');
+    const saved = localStorage.getItem('news_language_v2');
     return (saved as Language) || 'ZH';
   });
   const [sources, setSources] = useState<NewsSource[]>(() => {
-    const saved = localStorage.getItem('teen_news_sources_v1');
-    return saved ? JSON.parse(saved) : DEFAULT_SOURCES;
+    const saved = localStorage.getItem('teen_news_sources_v2');
+    if (saved) return JSON.parse(saved);
+    return language === 'ZH' ? SOURCES_ZH : SOURCES_EN;
   });
   const [items, setItems] = useState<NewsItem[]>([]);
   const [selectedItem, setSelectedItem] = useState<NewsItem | null>(null);
@@ -55,11 +62,18 @@ const TeenNewsView: React.FC = () => {
   }, [selectedItem]);
 
   useEffect(() => {
-    localStorage.setItem('teen_news_sources_v1', JSON.stringify(sources));
+    localStorage.setItem('teen_news_sources_v2', JSON.stringify(sources));
   }, [sources]);
 
   useEffect(() => {
-    localStorage.setItem('news_language', language);
+    localStorage.setItem('news_language_v2', language);
+    // When language changes, if we haven't customized sources, update them to defaults for that language
+    const saved = localStorage.getItem('teen_news_sources_v2');
+    if (!saved) {
+      setSources(language === 'ZH' ? SOURCES_ZH : SOURCES_EN);
+    }
+    setActiveSourceId('all');
+    fetchNews();
   }, [language]);
 
   const t = {
@@ -75,6 +89,7 @@ const TeenNewsView: React.FC = () => {
       analyzing: '正在为你解析核心原理...',
       generateSummary: '生成 AI 解析',
       readMore: '原文可在源站查看。点击外部链接图标阅读更多。',
+      viewOriginal: '查看原文',
       selectArticle: '选择一个主题',
       selectArticleDesc: '从列表中选择一个感兴趣的主题，查看 AI 导师为你准备的深度解析。',
       summaryPrompt: (title: string, content: string) => `作为一名 9 年级学生的贴心同伴导师。用清晰易懂的语言总结这些文章。如果文章提到技术或工程，请解释核心机制（例如传感器的工作原理）。跳过废话，专注于“为什么这很重要”的部分。\n\n标题: ${title}\n内容: ${content}`,
@@ -94,6 +109,7 @@ const TeenNewsView: React.FC = () => {
       analyzing: 'Analyzing core principles for you...',
       generateSummary: 'Generate AI Analysis',
       readMore: 'Full article available at source. Click the external link icon to read more.',
+      viewOriginal: 'View Original',
       selectArticle: 'Select a Topic',
       selectArticleDesc: 'Choose a topic from the list to see the deep analysis prepared by your AI mentor.',
       summaryPrompt: (title: string, content: string) => `Act as a helpful peer mentor for a 9th-grade student. Summarize these articles in clear language. If the article mentions technology or engineering, explain the core mechanism (like how a sensor works). Skip the fluff and focus on the 'Why it matters' part.\n\nTitle: ${title}\nContent: ${content}`,
@@ -207,13 +223,13 @@ const TeenNewsView: React.FC = () => {
       ];
 
       const mockItemsZH: NewsItem[] = [
-        // Science & Tech
+        // 机器之心
         {
           id: 'st1',
           title: '传感器如何帮助机器人“看”世界',
           content: '传感器是机器人的眼睛和耳朵。从利用声波测量距离的超声波传感器到探测热量的红外传感器，这些组件让机器能够在复杂环境中导航。',
-          url: 'https://www.snexplores.org/article/robot-sensors-vision',
-          source: 'Science & Tech',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false
         },
@@ -221,8 +237,8 @@ const TeenNewsView: React.FC = () => {
           id: 'st2',
           title: '深海生物发光的奥秘',
           content: '科学家们正在发现深海生物如何在完全黑暗的环境中产生自己的光，以便进行交流和捕猎。',
-          url: 'https://www.snexplores.org/article/deep-sea-light',
-          source: 'Science & Tech',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false
         },
@@ -230,18 +246,18 @@ const TeenNewsView: React.FC = () => {
           id: 'st3',
           title: '新型电池技术可能在几秒钟内为手机充电',
           content: '研究人员正在测试一种新型石墨烯电池，它比目前的锂离子电池能储存更多能量，且充电速度显著加快。',
-          url: 'https://www.snexplores.org/article/fast-charge-battery',
-          source: 'Science & Tech',
+          url: 'https://www.jiqizhixin.com/',
+          source: '机器之心',
           date: updateTime,
           isRead: false
         },
-        // Global Currents
+        // 36氪
         {
           id: 'gc1',
           title: '了解全球贸易及其对你生活的影响',
           content: '全球贸易通过商品和服务交换将各国联系在一起。本文探讨了在一个国家制造的智能手机如何使用来自其他十个国家的零部件。',
-          url: 'https://www.pbs.org/newshour/classroom/global-trade',
-          source: 'Global Currents',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false
         },
@@ -249,8 +265,8 @@ const TeenNewsView: React.FC = () => {
           id: 'gc2',
           title: '气候变化如何影响沿海社区',
           content: '海平面上升迫使城镇建立新的防御系统，并重新思考如何与海洋互动。学生们分享了来自前线的故事。',
-          url: 'https://www.pbs.org/newshour/classroom/coastal-impact',
-          source: 'Global Currents',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false
         },
@@ -258,18 +274,18 @@ const TeenNewsView: React.FC = () => {
           id: 'gc3',
           title: '丝绸之路的历史与现代互联互通',
           content: '追踪连接东西方的古代贸易路线，以及它们如何为当今互联互通的全球经济奠定基础。',
-          url: 'https://www.pbs.org/newshour/classroom/silk-road',
-          source: 'Global Currents',
+          url: 'https://36kr.com/',
+          source: '36氪',
           date: updateTime,
           isRead: false
         },
-        // Maker News
+        // IT之家
         {
           id: 'm1',
           title: '制作你的第一个 Arduino 项目：智能灯',
           content: '学习如何使用 Arduino Uno 和光敏电阻 (LDR) 制作一个在房间变暗时自动开启的灯。',
-          url: 'https://hackaday.com/blog/arduino-smart-lamp',
-          source: 'Maker News',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false
         },
@@ -277,8 +293,8 @@ const TeenNewsView: React.FC = () => {
           id: 'm2',
           title: '3D 打印入门：选择你的第一种耗材',
           content: '从 PLA 到 PETG，我们分析了不同材料的优缺点，帮助你的创客项目获得最佳效果。',
-          url: 'https://hackaday.com/blog/3d-printing-filament',
-          source: 'Maker News',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false
         },
@@ -286,8 +302,8 @@ const TeenNewsView: React.FC = () => {
           id: 'm3',
           title: 'Raspberry Pi Zero：承载大创意的微型计算机',
           content: '发现这台价值 10 美元的计算机如何为全球各地从复古游戏机到家庭自动化系统的各种设备提供动力。',
-          url: 'https://hackaday.com/blog/raspberry-pi-zero-projects',
-          source: 'Maker News',
+          url: 'https://www.ithome.com/',
+          source: 'IT之家',
           date: updateTime,
           isRead: false
         }
@@ -302,9 +318,6 @@ const TeenNewsView: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchNews();
-  }, [language]);
 
   const generateSummary = async (item: NewsItem) => {
     if (item.summary) return;
@@ -330,11 +343,12 @@ const TeenNewsView: React.FC = () => {
     }
   };
 
-  const filteredItems = items.filter(item => 
-    (activeSourceId === 'all' || item.source === activeSourceId) &&
-    (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-     item.content.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredItems = items.filter(item => {
+    const activeSource = sources.find(s => s.id === activeSourceId);
+    return (activeSourceId === 'all' || item.source === activeSource?.name) &&
+      (item.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+       item.content.toLowerCase().includes(searchQuery.toLowerCase()));
+  });
 
   const getSourceIcon = (sourceName: string) => {
     switch (sourceName) {
@@ -389,8 +403,9 @@ const TeenNewsView: React.FC = () => {
             <button 
               onClick={() => {
                 if (confirm(t.resetConfirm)) {
-                  setSources(DEFAULT_SOURCES);
+                  setSources(language === 'ZH' ? SOURCES_ZH : SOURCES_EN);
                   setActiveSourceId('all');
+                  localStorage.removeItem('teen_news_sources_v2');
                 }
               }}
               className="p-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-500 rounded-lg hover:bg-indigo-100 transition-colors"
@@ -559,12 +574,16 @@ const TeenNewsView: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => window.open(selectedItem.url, '_blank')}
-                    className="p-2 lg:p-3 bg-slate-50 dark:bg-slate-900/50 text-slate-500 rounded-xl lg:rounded-2xl hover:bg-slate-100 transition-all"
+                  <a 
+                    href={selectedItem.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="p-2 lg:p-3 bg-slate-50 dark:bg-slate-900/50 text-slate-500 rounded-xl lg:rounded-2xl hover:bg-slate-100 transition-all flex items-center gap-2"
+                    title={t.viewOriginal}
                   >
                     <ExternalLink className="w-4 h-4" />
-                  </button>
+                    <span className="hidden md:inline text-[9px] font-black uppercase tracking-widest">{t.viewOriginal}</span>
+                  </a>
                   <button 
                     onClick={() => {
                       setSelectedItem(null);
